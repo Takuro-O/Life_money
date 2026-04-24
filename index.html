@@ -4,847 +4,378 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>家計管理 月次ダッシュボード</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Chart.js (CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
   <style>
-    :root {
-      --bg:        #f5f4f0;
-      --surface:   #ffffff;
-      --surface2:  #faf9f7;
-      --border:    #e5e2db;
-      --border2:   #d4d0c8;
-      --text:      #1a1917;
-      --text2:     #6b6860;
-      --text3:     #9b9890;
-      --accent:    #c17f4a;
-      --accent-bg: #fdf4ec;
-      --accent-border: #e8c89a;
-      --ok:        #2d6a4f;
-      --ok-bg:     #ecf7f1;
-      --ok-border: #95d5b2;
-      --warn:      #9b2335;
-      --warn-bg:   #fdf0f2;
-      --warn-border: #e8a4ad;
-      --final-border: #c17f4a;
-      --radius-sm: 6px;
-      --radius:    10px;
-      --radius-lg: 16px;
-      --shadow-sm: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
-      --shadow:    0 4px 16px rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.04);
-      --shadow-lg: 0 20px 60px rgba(0,0,0,.14), 0 4px 16px rgba(0,0,0,.06);
-      --transition: 150ms cubic-bezier(.4,0,.2,1);
+    :root{
+      --bg:#fff6f8;
+      --card:#ffffffcc;
+      --line:#f3c9d2;
+      --pink:#f6b3c4;
+      --pink2:#ffd3dc;
+      --text:#3b2f35;
+      --muted:#7a6770;
+      --ok:#2f6b4f;
+      --warn:#b4232c;
+      --shadow: 0 10px 30px rgba(180,60,95,.12);
+      --radius:16px;
     }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", sans-serif;
+      background: radial-gradient(1200px 600px at 20% 0%, #ffe8ee 0%, var(--bg) 60%, #fff 100%);
+      color:var(--text);
+    }
+    header{
+      position:sticky; top:0; z-index:10;
+      backdrop-filter: blur(8px);
+      background: linear-gradient(180deg, rgba(255,246,248,.95), rgba(255,246,248,.75));
+      border-bottom:1px solid rgba(243,201,210,.7);
+    }
+    .wrap{max-width:1200px; margin:0 auto; padding:14px 16px;}
+    .topbar{
+      display:flex; gap:12px; align-items:center; justify-content:space-between;
+      flex-wrap:wrap;
+    }
+    .brand{display:flex; gap:10px; align-items:center;}
+    .dot{
+      width:14px; height:14px; border-radius:50%;
+      background: linear-gradient(135deg, var(--pink), var(--pink2));
+      box-shadow: 0 6px 16px rgba(246,179,196,.35);
+    }
+    .brand h1{font-size:16px; margin:0; letter-spacing:.02em}
+    .controls{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+    .field{
+      display:flex; gap:8px; align-items:center;
+      padding:8px 10px; border:1px solid rgba(243,201,210,.9);
+      border-radius:12px; background:rgba(255,255,255,.7);
+    }
+    label{font-size:12px; color:var(--muted)}
+    input, button{font:inherit}
+    input[type="text"], input[type="number"]{border:0; outline:none; background:transparent;}
+    input[type="number"]{text-align:right}
+    .btn{
+      padding:9px 12px;
+      border-radius:12px;
+      border:1px solid rgba(243,201,210,.9);
+      background: linear-gradient(180deg, #fff, #fff7f9);
+      cursor:pointer;
+    }
+    .btn.primary{
+      border-color: rgba(246,179,196,.9);
+      background: linear-gradient(180deg, #ffe8ee, #fff);
+    }
+    .btn.small{padding:6px 10px; border-radius:10px; font-size:12px}
+    .btn:hover{filter:brightness(.99)}
 
-    *, *::before, *::after { box-sizing: border-box; }
+    main .grid{
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap:14px;
+      align-items:start;
+      padding:14px 16px 24px;
+      max-width:1200px;
+      margin:0 auto;
+    }
+    @media (max-width: 980px){ main .grid{grid-template-columns: 1fr;} }
 
-    body {
-      margin: 0;
-      font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
-      font-size: 14px;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-    }
-
-    /* ======= HEADER ======= */
-    header {
-      position: sticky;
-      top: 0;
-      z-index: 50;
-      background: rgba(245,244,240,.92);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--border);
-    }
-    .header-inner {
-      max-width: 1280px;
-      margin: 0 auto;
-      padding: 0 24px;
-      height: 60px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-    }
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-shrink: 0;
-    }
-    .brand-icon {
-      width: 32px;
-      height: 32px;
-      background: var(--text);
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .brand-icon svg { color: var(--bg); }
-    .brand-name {
-      font-size: 15px;
-      font-weight: 700;
-      letter-spacing: -.02em;
-    }
-
-    .month-nav {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: var(--surface);
-      border: 1px solid var(--border);
+    .card{
+      background: var(--card);
+      border:1px solid rgba(243,201,210,.9);
       border-radius: var(--radius);
-      padding: 4px;
-    }
-    .nav-btn {
-      width: 32px;
-      height: 32px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: none;
-      background: transparent;
-      border-radius: 6px;
-      cursor: pointer;
-      color: var(--text2);
-      font-size: 14px;
-      transition: background var(--transition), color var(--transition);
-    }
-    .nav-btn:hover { background: var(--bg); color: var(--text); }
-
-    .month-display {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 0 4px;
-    }
-    .month-display input[type="month"] {
-      border: none;
-      background: transparent;
-      font: inherit;
-      font-size: 15px;
-      font-weight: 700;
-      color: var(--text);
-      cursor: pointer;
-      outline: none;
-      width: 130px;
-      text-align: center;
-      letter-spacing: -.01em;
-    }
-    .month-display input[type="month"]::-webkit-calendar-picker-indicator {
-      opacity: 0.5;
-      cursor: pointer;
-    }
-
-    .header-actions {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .icon-btn {
-      width: 36px;
-      height: 36px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: 1px solid var(--border);
-      background: var(--surface);
-      border-radius: var(--radius-sm);
-      cursor: pointer;
-      color: var(--text2);
-      transition: all var(--transition);
-      font-size: 16px;
-      text-decoration: none;
-    }
-    .icon-btn:hover { background: var(--bg); color: var(--text); border-color: var(--border2); }
-    .icon-btn.danger:hover { background: var(--warn-bg); color: var(--warn); border-color: var(--warn-border); }
-
-    /* ======= LAYOUT ======= */
-    .layout {
-      max-width: 1280px;
-      margin: 0 auto;
-      padding: 20px 24px 40px;
-      display: grid;
-      grid-template-columns: 1fr 320px;
-      gap: 20px;
-      align-items: start;
-    }
-    @media (max-width: 960px) {
-      .layout { grid-template-columns: 1fr; }
-      .sidebar { position: static !important; }
-    }
-
-    /* ======= SIDEBAR ======= */
-    .sidebar { position: sticky; top: 80px; }
-
-    .result-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      overflow: hidden;
       box-shadow: var(--shadow);
+      overflow:hidden;
     }
-    .result-header {
-      padding: 16px 20px 12px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+    .card .hd{
+      display:flex; justify-content:space-between; align-items:baseline;
+      padding:12px 12px;
+      background: linear-gradient(90deg, rgba(246,179,196,.30), rgba(255,255,255,0));
+      border-bottom:1px solid rgba(243,201,210,.7);
+      gap:10px;
     }
-    .result-header .label {
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: .08em;
-      color: var(--text3);
-    }
-    .status-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 12px;
-      font-weight: 600;
-      padding: 3px 10px;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      background: var(--surface2);
-      color: var(--text2);
-      transition: all var(--transition);
-    }
-    .status-pill.ok { background: var(--ok-bg); color: var(--ok); border-color: var(--ok-border); }
-    .status-pill.warn { background: var(--warn-bg); color: var(--warn); border-color: var(--warn-border); }
+    .card .hd h2{font-size:14px; margin:0;}
+    .card .hd .hint{font-size:12px; color:var(--muted)}
+    .card .bd{padding:10px 12px 12px}
 
-    .result-amount-wrap {
-      padding: 20px 20px 16px;
-      border-bottom: 1px solid var(--border);
-      transition: background var(--transition);
+    table{
+      width:100%;
+      border-collapse:separate;
+      border-spacing:0;
+      border-radius:12px;
+      border:1px solid rgba(243,201,210,.7);
+      background: rgba(255,255,255,.7);
+      overflow:hidden;
     }
-    .result-amount-wrap.positive { background: var(--ok-bg); }
-    .result-amount-wrap.negative { background: var(--warn-bg); }
-    .result-sub { font-size: 11px; color: var(--text3); margin-bottom: 6px; line-height: 1.4; }
-    .result-amount {
-      font-family: "DM Serif Display", serif;
-      font-size: 36px;
-      letter-spacing: -.02em;
-      color: var(--text);
-      transition: color var(--transition);
+    th, td{
+      padding:10px 10px;
+      border-bottom:1px solid rgba(243,201,210,.55);
+      vertical-align:middle;
+      font-size:13px;
     }
-    .result-amount.positive { color: var(--ok); }
-    .result-amount.negative { color: var(--warn); }
+    th{
+      text-align:left;
+      color:var(--muted);
+      background: rgba(255,235,240,.7);
+      font-weight:600;
+      white-space:nowrap;
+    }
+    tr:last-child td{border-bottom:0}
 
-    .breakdown-list {
-      padding: 12px 20px;
-      border-bottom: 1px solid var(--border);
+    .num{ text-align:right; font-variant-numeric: tabular-nums; white-space:nowrap; }
+    .rowlabel{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+    .tag{
+      font-size:11px; padding:2px 8px; border-radius:999px;
+      border:1px solid rgba(243,201,210,.9);
+      background: rgba(255,246,248,.8);
+      color:var(--muted);
+      white-space:nowrap;
     }
-    .breakdown-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 5px 0;
-      font-size: 12px;
-      border-bottom: 1px solid var(--border);
-    }
-    .breakdown-item:last-child { border-bottom: none; }
-    .breakdown-item .bk { color: var(--text2); }
-    .breakdown-item .bv {
-      font-variant-numeric: tabular-nums;
-      font-weight: 600;
-      white-space: nowrap;
-    }
-    .breakdown-item.highlight .bk { color: var(--text); font-weight: 600; }
-    .breakdown-item.highlight .bv {
-      font-size: 13px;
-      color: var(--accent);
-    }
-    .breakdown-divider {
-      height: 1px;
-      background: var(--border2);
-      margin: 4px 0;
-    }
+    .tag.carry{border-color: rgba(180,35,44,.25); color: rgba(180,35,44,.9); background: rgba(180,35,44,.06);}
 
-    /* ======= CARD ======= */
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      overflow: hidden;
-      box-shadow: var(--shadow-sm);
-      margin-bottom: 12px;
+    .cell-input{
+      width:120px;
+      padding:7px 8px;
+      border-radius:10px;
+      border:1px solid rgba(243,201,210,.9);
+      background: rgba(255,255,255,.85);
+      text-align:right;
     }
-    .card-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 14px 18px;
-      cursor: pointer;
-      user-select: none;
-      border-bottom: 1px solid transparent;
-      transition: background var(--transition), border-color var(--transition);
+    .cell-input[disabled], .cell-input[readonly]{
+      background: rgba(255,235,240,.55);
+      color: rgba(59,47,53,.75);
+      border-color: rgba(243,201,210,.7);
+      cursor:not-allowed;
     }
-    .card-header:hover { background: var(--surface2); }
-    .card-header.open { border-bottom-color: var(--border); }
+    .tot{font-weight:700; background: rgba(255,235,240,.65);}
 
-    .card-title-group { display: flex; align-items: center; gap: 10px; }
-    .card-number {
-      width: 22px;
-      height: 22px;
-      background: var(--text);
-      color: var(--bg);
-      border-radius: 50%;
-      font-size: 11px;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-    .card-title { font-size: 14px; font-weight: 700; }
-    .card-hint { font-size: 11px; color: var(--text3); margin-top: 1px; }
-    .card-total-preview {
-      font-size: 13px;
-      font-weight: 700;
-      font-variant-numeric: tabular-nums;
-      color: var(--text2);
-      white-space: nowrap;
-    }
-    .card-chevron {
-      width: 18px;
-      height: 18px;
-      color: var(--text3);
-      transition: transform var(--transition);
-      flex-shrink: 0;
-      margin-left: 8px;
-    }
-    .card-header.open .card-chevron { transform: rotate(180deg); }
-    .card-body {
-      padding: 16px 18px;
-      display: none;
-    }
-    .card-body.open { display: block; }
+    .aside{position:sticky; top:76px;}
+    @media (max-width: 980px){ .aside{position:relative; top:auto;} }
 
-    /* ======= TABLE ======= */
-    .tbl-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13px;
-      min-width: 500px;
+    .result{padding:12px 12px 10px;} /* compact */
+    .result .big{
+      font-size:20px;              /* compact */
+      font-weight:800;
+      letter-spacing:.02em;
+      margin:6px 0 2px;            /* compact */
     }
-    th {
-      padding: 9px 12px;
-      text-align: left;
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: .06em;
-      color: var(--text3);
-      background: var(--surface2);
-      border-bottom: 1px solid var(--border);
-      white-space: nowrap;
-    }
-    th.num { text-align: right; }
-    td {
-      padding: 9px 12px;
-      border-bottom: 1px solid var(--border);
-      vertical-align: middle;
-    }
-    tr:last-child td { border-bottom: none; }
-    tbody tr { transition: background var(--transition); }
-    tbody tr:hover { background: var(--surface2); }
-    .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-    tfoot tr td {
-      background: var(--surface2);
-      font-weight: 700;
-      font-size: 13px;
-      border-top: 2px solid var(--border2);
-    }
-    tfoot tr td:first-child { color: var(--text2); }
+    .result .sub{color:var(--muted); font-size:12px;}
 
-    .row-label { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-    .tag {
-      display: inline-flex;
-      align-items: center;
-      font-size: 10px;
-      font-weight: 700;
-      padding: 1px 6px;
-      border-radius: 4px;
-      letter-spacing: .04em;
-      white-space: nowrap;
+    .status{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:6px 10px; border-radius:999px;
+      border:1px solid rgba(243,201,210,.9);
+      background: rgba(255,255,255,.75);
+      font-size:12px; color:var(--muted);
     }
-    .tag-carry { background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn-border); }
-    .tag-exception { background: var(--accent-bg); color: var(--accent); border: 1px solid var(--accent-border); }
+    .status.ok{border-color: rgba(47,107,79,.25); color: var(--ok); background: rgba(47,107,79,.06);}
+    .status.warn{border-color: rgba(180,35,44,.25); color: var(--warn); background: rgba(180,35,44,.06);}
 
-    /* ======= INPUTS ======= */
-    .cell-input {
-      width: 100%;
-      min-width: 90px;
-      max-width: 130px;
-      padding: 6px 8px;
-      text-align: right;
-      font: inherit;
-      font-size: 13px;
-      font-variant-numeric: tabular-nums;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      background: var(--surface);
-      color: var(--text);
-      outline: none;
-      transition: border-color var(--transition), box-shadow var(--transition);
-      -moz-appearance: textfield;
+    .kv{
+      margin-top:10px;
+      border-radius:12px;
+      border:1px solid rgba(243,201,210,.7);
+      overflow:hidden;
+      background: rgba(255,255,255,.65);
     }
-    .cell-input::-webkit-inner-spin-button,
-    .cell-input::-webkit-outer-spin-button { -webkit-appearance: none; }
-    .cell-input:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(193,127,74,.15);
+    .kv .row{
+      display:flex; justify-content:space-between; gap:12px;
+      padding:6px 10px;          /* compact */
+      border-bottom:1px solid rgba(243,201,210,.55);
+      font-size:12px;            /* compact */
     }
-    .cell-input:disabled, .cell-input[readonly] {
-      background: var(--surface2);
-      color: var(--text3);
-      cursor: not-allowed;
-      border-color: var(--border);
-    }
-    /* Final input – amber accent */
-    .cell-input.final {
-      border-left: 3px solid var(--final-border);
-      background: var(--accent-bg);
-    }
-    .cell-input.final:focus {
-      border-color: var(--accent);
-      border-left-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(193,127,74,.15);
-    }
+    .kv .row:last-child{border-bottom:0}
+    .kv .k{color:var(--muted)}
+    .kv .v{font-variant-numeric: tabular-nums; text-align:right}
 
-    .final-wrap { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
-    .trend-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      font: inherit;
-      font-size: 11px;
-      font-weight: 600;
-      padding: 4px 8px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      background: var(--surface);
-      color: var(--text2);
-      cursor: pointer;
-      white-space: nowrap;
-      transition: all var(--transition);
-      flex-shrink: 0;
+    .footnote{margin-top:10px; color:var(--muted); font-size:12px; line-height:1.4}
+    .settings{
+      padding:12px 12px 10px;
+      border-top:1px dashed rgba(243,201,210,.9);
+      margin-top:12px;
     }
-    .trend-btn:hover {
-      background: var(--accent-bg);
-      border-color: var(--accent-border);
-      color: var(--accent);
+    .settings h3{margin:0 0 8px; font-size:13px}
+    .settings .grid2{display:grid; grid-template-columns: 1fr 1fr; gap:10px;}
+    @media (max-width: 980px){ .settings .grid2{grid-template-columns: 1fr;} }
+    .mini{
+      width:100%;
+      padding:8px 10px;
+      border-radius:12px;
+      border:1px solid rgba(243,201,210,.9);
+      background: rgba(255,255,255,.75);
     }
-    .trend-btn svg { width: 12px; height: 12px; }
+    .danger{color:var(--warn); font-weight:700}
+    .right-actions{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px}
 
-    /* ======= DATA I/O CARD ======= */
-    .io-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 16px 18px;
-      box-shadow: var(--shadow-sm);
-      margin-bottom: 12px;
+    /* Modal */
+    .modal-backdrop{
+      position:fixed; inset:0; background: rgba(30,10,18,.35);
+      display:none; align-items:center; justify-content:center;
+      padding:16px; z-index:100;
     }
-    .io-title {
-      font-size: 12px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: .07em;
-      color: var(--text3);
-      margin: 0 0 12px;
+    .modal{
+      width:min(900px, 100%);
+      background: rgba(255,255,255,.92);
+      border:1px solid rgba(243,201,210,.9);
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.18);
+      overflow:hidden;
     }
-    .io-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font: inherit;
-      font-size: 13px;
-      font-weight: 600;
-      padding: 7px 14px;
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--border);
-      background: var(--surface);
-      color: var(--text);
-      cursor: pointer;
-      transition: all var(--transition);
-      white-space: nowrap;
-      text-decoration: none;
+    .modal .mh{
+      display:flex; align-items:center; justify-content:space-between;
+      padding:12px 12px;
+      border-bottom:1px solid rgba(243,201,210,.7);
+      background: linear-gradient(90deg, rgba(246,179,196,.25), rgba(255,255,255,0));
+      gap:10px;
     }
-    .btn:hover { background: var(--surface2); border-color: var(--border2); }
-    .btn.danger { color: var(--warn); border-color: var(--warn-border); background: var(--warn-bg); }
-    .btn.danger:hover { background: #f7d5d9; }
-    .btn-label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
-    .io-note { margin-top: 10px; font-size: 11px; color: var(--text3); line-height: 1.6; }
+    .modal .mh h3{margin:0; font-size:14px}
+    .modal .mb{padding:12px}
+    canvas{max-width:100%}
 
-    /* ======= TOAST ======= */
-    #toast-container {
-      position: fixed;
-      bottom: 24px;
-      right: 24px;
-      z-index: 9999;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      pointer-events: none;
-    }
-    .toast {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 16px;
-      background: var(--text);
-      color: #fff;
-      border-radius: var(--radius);
-      font-size: 13px;
-      font-weight: 500;
-      box-shadow: var(--shadow-lg);
-      animation: toast-in .25s cubic-bezier(.4,0,.2,1);
-      pointer-events: auto;
-    }
-    .toast.ok { background: var(--ok); }
-    .toast.warn { background: var(--warn); }
-    @keyframes toast-in {
-      from { transform: translateX(120%); opacity: 0; }
-      to   { transform: translateX(0);   opacity: 1; }
-    }
-    @keyframes toast-out {
-      from { transform: translateX(0);   opacity: 1; }
-      to   { transform: translateX(120%); opacity: 0; }
-    }
-    .toast.removing { animation: toast-out .2s cubic-bezier(.4,0,.2,1) forwards; }
-
-    /* ======= MODAL (TREND) ======= */
-    .modal-backdrop {
-      position: fixed;
-      inset: 0;
-      background: rgba(20,18,16,.45);
-      backdrop-filter: blur(4px);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
+    /* Toast */
+    .toast-container{
+      position:fixed;
+      left:50%;
+      bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+      transform: translateX(-50%);
       z-index: 200;
+      display:flex; flex-direction:column; gap:8px;
+      pointer-events:none;
+      width: min(420px, calc(100% - 32px));
     }
-    .modal-backdrop.open { display: flex; }
-    .modal {
-      width: min(760px, 100%);
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow-lg);
-      overflow: hidden;
-      animation: modal-in .2s cubic-bezier(.4,0,.2,1);
+    .toast{
+      background: rgba(59,47,53,.92);
+      color:#fff;
+      padding:10px 14px;
+      border-radius:12px;
+      font-size:13px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+      pointer-events:auto;
+      opacity:0;
+      transform: translateY(8px);
+      transition: opacity .2s ease, transform .2s ease;
     }
-    @keyframes modal-in {
-      from { transform: scale(.95) translateY(10px); opacity: 0; }
-      to   { transform: scale(1)   translateY(0);    opacity: 1; }
-    }
-    .modal-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 16px 20px;
-      border-bottom: 1px solid var(--border);
-    }
-    .modal-title { font-size: 16px; font-weight: 700; margin: 0; }
-    .modal-meta { font-size: 12px; color: var(--text3); margin-top: 2px; }
-    .modal-body { padding: 20px; }
-    .modal-close {
-      width: 32px;
-      height: 32px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      background: var(--surface);
-      cursor: pointer;
-      color: var(--text2);
-      font-size: 18px;
-      line-height: 1;
-      transition: all var(--transition);
-    }
-    .modal-close:hover { background: var(--surface2); }
-
-    /* ======= SETTINGS MODAL ======= */
-    .settings-modal {
-      width: min(520px, 100%);
-    }
-    .settings-section { margin-bottom: 20px; }
-    .settings-label {
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: .07em;
-      color: var(--text3);
-      margin-bottom: 8px;
-    }
-    .settings-row { display: flex; gap: 12px; align-items: flex-end; }
-    .settings-field { flex: 1; }
-    .settings-field label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 4px; }
-    .settings-input {
-      width: 100%;
-      padding: 8px 10px;
-      font: inherit;
-      font-size: 13px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      background: var(--surface);
-      color: var(--text);
-      outline: none;
-      transition: border-color var(--transition), box-shadow var(--transition);
-    }
-    .settings-input:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(193,127,74,.15);
-    }
-    .modal-footer {
-      padding: 14px 20px;
-      border-top: 1px solid var(--border);
-      display: flex;
-      justify-content: flex-end;
-      gap: 8px;
-    }
-    .btn-primary {
-      background: var(--text);
-      color: var(--bg);
-      border-color: var(--text);
-    }
-    .btn-primary:hover { background: #333; }
-
-    /* ======= CONFIRM DIALOG ======= */
-    .confirm-modal { width: min(400px, 100%); }
-    .confirm-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      background: var(--warn-bg);
-      border: 2px solid var(--warn-border);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 16px;
-      font-size: 22px;
-    }
-    .confirm-msg { font-size: 13px; color: var(--text2); line-height: 1.6; margin-top: 8px; }
-    .confirm-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
-
-    /* ======= SHORTCUTS TIP ======= */
-    .shortcuts-tip {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 8px 12px;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      font-size: 11px;
-      color: var(--text3);
-    }
-    kbd {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 1px 5px;
-      background: var(--surface);
-      border: 1px solid var(--border2);
-      border-bottom-width: 2px;
-      border-radius: 4px;
-      font: inherit;
-      font-size: 10px;
-      font-weight: 700;
-      color: var(--text2);
-    }
-    .reset-btn-row { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
-
-    canvas { max-width: 100%; }
-    .modal-footnote { margin-top: 12px; font-size: 11px; color: var(--text3); line-height: 1.5; }
+    .toast.show{ opacity:1; transform: translateY(0); }
+    .toast.warn{ background: rgba(180,35,44,.95); }
+    .toast.ok{ background: rgba(47,107,79,.95); }
   </style>
 </head>
 
 <body>
-
-<!-- ======= TOAST CONTAINER ======= -->
-<div id="toast-container"></div>
-
-<!-- ======= HEADER ======= -->
 <header>
-  <div class="header-inner">
-    <div class="brand">
-      <div class="brand-icon">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="2" y="3" width="20" height="14" rx="2"/>
-          <path d="M8 21h8M12 17v4"/>
-        </svg>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <div class="dot"></div>
+        <h1>家計管理 月次ダッシュボード</h1>
       </div>
-      <span class="brand-name">家計管理</span>
-    </div>
 
-    <div class="month-nav">
-      <button class="nav-btn" id="btnPrev" title="前月 (Ctrl+←)">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-      </button>
-      <div class="month-display">
-        <input type="month" id="month" title="月を選択" />
-      </div>
-      <button class="nav-btn" id="btnNext" title="次月 (Ctrl+→)">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M9 18l6-6-6-6"/>
-        </svg>
-      </button>
-    </div>
+      <div class="controls">
+        <div class="field">
+          <label for="month">年月(YYYYMM)</label>
+          <input id="month" type="text" inputmode="numeric" maxlength="6" placeholder="202512" />
+        </div>
 
-    <div class="header-actions">
-      <div class="shortcuts-tip">
-        <span><kbd>Ctrl</kbd>+<kbd>←</kbd> / <kbd>→</kbd> で月切替</span>
+        <button class="btn primary" id="btnPrev">◀ 前月</button>
+        <button class="btn primary" id="btnNext">次月 ▶</button>
+        <button class="btn" id="btnResetMonth">この月を初期化</button>
       </div>
-      <button class="icon-btn" id="btnSettings" title="按分設定">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="3"/>
-          <path d="M19.07 4.93l-1.41 1.41M5.34 18.66l-1.41 1.41M19.07 19.07l-1.41-1.41M5.34 5.34L3.93 3.93M22 12h-2M4 12H2M12 22v-2M12 4V2"/>
-        </svg>
-      </button>
-      <button class="icon-btn danger" id="btnResetMonth" title="この月を初期化">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>
-        </svg>
-      </button>
     </div>
   </div>
 </header>
 
-<!-- ======= MAIN ======= -->
 <main>
-  <div class="layout">
-    <!-- LEFT COLUMN -->
-    <section id="blocks"></section>
+  <div class="grid">
+    <section id="left">
+      <div id="blocks"></div>
 
-    <!-- RIGHT COLUMN (SIDEBAR) -->
-    <aside class="sidebar">
-      <!-- Result Card -->
-      <div class="result-card">
-        <div class="result-header">
-          <span class="label">今月の精算</span>
-          <span id="status" class="status-pill">—</span>
+      <div class="card">
+        <div class="hd">
+          <h2>データ入出力</h2>
+          <div class="hint">月次データをJSONでバックアップ</div>
         </div>
-        <div class="result-amount-wrap" id="resultAmountWrap">
-          <div class="result-sub">妻（ゆか）から受領する金額<br>（100円単位切り捨て後）</div>
-          <div class="result-amount" id="finalReceive">¥0</div>
+        <div class="bd">
+          <div class="right-actions">
+            <button class="btn" id="btnExport">エクスポート(JSON)</button>
+            <label class="btn" style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;">
+              インポート(JSON)
+              <input id="fileImport" type="file" accept="application/json" style="display:none">
+            </label>
+            <button class="btn" id="btnClearAll">全月データ削除</button>
+          </div>
+          <div class="footnote">
+            保存先はブラウザのlocalStorageです。PC/ブラウザを変えると別になります。必要なら月次JSONを保管してください。
+          </div>
         </div>
-        <div class="breakdown-list" id="breakdown"></div>
       </div>
+    </section>
 
-      <!-- Data I/O -->
-      <div class="io-card" style="margin-top:12px">
-        <div class="io-title">データ管理</div>
-        <div class="io-actions">
-          <button class="btn" id="btnExport">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
-            </svg>
-            エクスポート
-          </button>
-          <label class="btn btn-label">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
-            </svg>
-            インポート
-            <input id="fileImport" type="file" accept="application/json" style="display:none">
-          </label>
+    <aside class="aside">
+      <div class="card">
+        <div class="hd">
+          <h2>結論</h2>
+          <div id="status" class="status">—</div>
         </div>
-        <div class="io-note">
-          保存先はブラウザの localStorage です。PCやブラウザが変わると別になります。定期的にエクスポートしてバックアップしてください。
+        <div class="result">
+          <div class="sub">今月 妻（ゆか）から受領する金額（100円単位切り捨て後）</div>
+          <div class="big" id="finalReceive">¥0</div>
+
+          <div class="kv" id="breakdown"></div>
+
+          <div class="settings">
+            <h3>按分ルール（設定）</h3>
+            <div class="grid2">
+              <div>
+                <div class="sub">原則（あなた / 妻）</div>
+                <div style="display:flex;gap:10px;margin-top:6px;">
+                  <input class="mini" id="ratioYour" type="number" step="0.001" min="0" max="1" />
+                  <input class="mini" id="ratioYuka" type="number" step="0.001" min="0" max="1" />
+                </div>
+              </div>
+              <div>
+                <div class="sub">例外：新居関係（あなた / 妻）</div>
+                <div style="display:flex;gap:10px;margin-top:6px;">
+                  <input class="mini" id="ratioNewHomeYour" type="number" step="0.001" min="0" max="1" />
+                  <input class="mini" id="ratioNewHomeYuka" type="number" step="0.001" min="0" max="1" />
+                </div>
+              </div>
+            </div>
+            <div class="right-actions">
+              <button class="btn" id="btnSaveSettings">設定を保存</button>
+            </div>
+            <div class="footnote">
+              「前月未精算（自動）」は、対象行の <b>先月の(確定 or 暫定)</b> − <b>先月の暫定</b> を合算して自動計算します（負は0扱い）。
+            </div>
+          </div>
+
+          <div class="footnote">
+            差額がマイナスの場合は <span class="danger">「妻へ支払いが必要」</span> として警告し、受領額表示は0にします。
+          </div>
         </div>
       </div>
     </aside>
   </div>
 </main>
 
-<!-- ======= TREND MODAL ======= -->
-<div class="modal-backdrop" id="trendBackdrop">
-  <div class="modal" role="dialog" aria-modal="true">
-    <div class="modal-header">
-      <div>
-        <div class="modal-title" id="trendTitle">推移グラフ</div>
-        <div class="modal-meta" id="trendMeta">過去12ヶ月</div>
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
+
+<!-- Graph Modal -->
+<div class="modal-backdrop" id="modalBackdrop" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="mh">
+      <h3 id="modalTitle">推移グラフ</h3>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <span class="tag" id="modalMeta">過去12ヶ月</span>
+        <button class="btn small" id="btnCloseModal">閉じる</button>
       </div>
-      <button class="modal-close" id="btnCloseTrend">✕</button>
     </div>
-    <div class="modal-body">
+    <div class="mb">
       <canvas id="chartCanvas" height="140"></canvas>
-      <div class="modal-footnote">確定値が入力されている月は確定値を、未入力の月は暫定値を表示しています。</div>
-    </div>
-  </div>
-</div>
-
-<!-- ======= SETTINGS MODAL ======= -->
-<div class="modal-backdrop" id="settingsBackdrop">
-  <div class="modal settings-modal" role="dialog" aria-modal="true">
-    <div class="modal-header">
-      <div>
-        <div class="modal-title">按分ルール設定</div>
-        <div class="modal-meta">費目ごとの負担割合を設定します</div>
-      </div>
-      <button class="modal-close" id="btnCloseSettings">✕</button>
-    </div>
-    <div class="modal-body" style="padding-bottom:0">
-      <div class="settings-section">
-        <div class="settings-label">原則（あなた / 妻）</div>
-        <div class="settings-row">
-          <div class="settings-field">
-            <label>あなたの割合</label>
-            <input class="settings-input" id="ratioYour" type="number" step="0.001" min="0" max="1" />
-          </div>
-          <div class="settings-field">
-            <label>妻（ゆか）の割合</label>
-            <input class="settings-input" id="ratioYuka" type="number" step="0.001" min="0" max="1" />
-          </div>
-        </div>
-      </div>
-      <div class="settings-section">
-        <div class="settings-label">例外：新居関係（あなた / 妻）</div>
-        <div class="settings-row">
-          <div class="settings-field">
-            <label>あなたの割合</label>
-            <input class="settings-input" id="ratioNewHomeYour" type="number" step="0.001" min="0" max="1" />
-          </div>
-          <div class="settings-field">
-            <label>妻（ゆか）の割合</label>
-            <input class="settings-input" id="ratioNewHomeYuka" type="number" step="0.001" min="0" max="1" />
-          </div>
-        </div>
-      </div>
-      <div style="padding-top:4px; padding-bottom:16px; font-size:11px; color:var(--text3); line-height:1.6">
-        「前月未精算（自動）」は、対象行の <b>確定値（または暫定値）</b> − <b>暫定値</b> を合算して自動計算します（負は0扱い）。
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn" id="btnCancelSettings">キャンセル</button>
-      <button class="btn btn-primary" id="btnSaveSettings">保存</button>
-    </div>
-  </div>
-</div>
-
-<!-- ======= CONFIRM MODAL ======= -->
-<div class="modal-backdrop" id="confirmBackdrop">
-  <div class="modal confirm-modal" role="dialog" aria-modal="true">
-    <div class="modal-body" style="padding-top:24px;">
-      <div class="confirm-icon" id="confirmIcon">⚠️</div>
-      <div style="font-size:16px; font-weight:700;" id="confirmTitle">確認</div>
-      <div class="confirm-msg" id="confirmMsg"></div>
-      <div class="confirm-actions">
-        <button class="btn" id="btnConfirmCancel">キャンセル</button>
-        <button class="btn danger" id="btnConfirmOk">削除する</button>
+      <div class="footnote">
+        グラフの値は <b>確定が入っていれば確定</b>、未入力なら <b>暫定</b> を表示します。
       </div>
     </div>
   </div>
@@ -852,124 +383,250 @@
 
 <script>
 (() => {
-  // ====== 固定金額 ======
-  const FIXED_MORTGAGE = 121728;
-  const ZENNOSUKE_INVEST_DEDUCTION = 20000;
+  // ====== 定数 ======
+  const SAVE_DEBOUNCE_MS = 300;
+  const TREND_MONTHS = 12;
+  const RECEIVE_ROUND_UNIT = 100;     // 受領額の切り捨て単位
+  const TOAST_DURATION_MS = 2600;
+  const SCHEMA_VERSION = 1;
 
-  // ====== 確定/推移 対象 ======
+  // ====== Toast ======
+  const toastContainer = document.getElementById("toastContainer");
+  function showToast(message, type){
+    if(!toastContainer) return;
+    const el = document.createElement("div");
+    el.className = "toast" + (type ? (" " + type) : "");
+    el.textContent = String(message);
+    toastContainer.appendChild(el);
+    // 次フレームで show
+    requestAnimationFrame(() => el.classList.add("show"));
+    setTimeout(() => {
+      el.classList.remove("show");
+      setTimeout(() => el.remove(), 250);
+    }, TOAST_DURATION_MS);
+  }
+
+  // ====== 安全な localStorage ラッパー ======
+  const safeStorage = {
+    get(key){
+      try{
+        return localStorage.getItem(key);
+      }catch(e){
+        console.warn("localStorage.getItem failed:", e);
+        return null;
+      }
+    },
+    set(key, value){
+      try{
+        localStorage.setItem(key, value);
+        return true;
+      }catch(e){
+        if(e && e.name === "QuotaExceededError"){
+          showToast("保存容量が上限に達しました。古い月データを削除してください。", "warn");
+        }else{
+          showToast("保存に失敗しました。", "warn");
+          console.warn("localStorage.setItem failed:", e);
+        }
+        return false;
+      }
+    },
+    remove(key){
+      try{
+        localStorage.removeItem(key);
+        return true;
+      }catch(e){
+        console.warn("localStorage.removeItem failed:", e);
+        return false;
+      }
+    },
+    keys(){
+      const arr = [];
+      try{
+        for(let i=0;i<localStorage.length;i++){
+          const k = localStorage.key(i);
+          if(k) arr.push(k);
+        }
+      }catch(e){
+        console.warn("localStorage.key failed:", e);
+      }
+      return arr;
+    }
+  };
+
+  // ====== debounce ======
+  function debounce(fn, wait){
+    let t = null;
+    const wrapped = (...args) => {
+      if(t) clearTimeout(t);
+      t = setTimeout(() => { t = null; fn(...args); }, wait);
+    };
+    wrapped.flush = () => { if(t){ clearTimeout(t); t = null; } };
+    return wrapped;
+  }
+
+  // ====== 固定金額 ======
+  const FIXED_MORTGAGE = 121728;               // 住宅ローン固定
+  const ZENNOSUKE_INVEST_DEDUCTION = 20000;    // ゆかの毎月投資（精算から控除・固定）
+
+  // ====== 確定/推移 対象（trendKey） ======
   const TREND_ITEMS = {
-    electric:     { label:"電気",         block:"fixed",   row:"electric" },
-    gas:          { label:"ガス",         block:"fixed",   row:"gas" },
-    food:         { label:"食費",         block:"daily",   row:"food" },
-    daily_goods:  { label:"日用品",       block:"daily",   row:"daily_goods" },
-    zennosuke:    { label:"ぜんのすけ",   block:"daily",   row:"zennosuke" },
-    car:          { label:"自動車",       block:"special", row:"car" },
-    hobby:        { label:"趣味娯楽",     block:"special", row:"hobby" },
+    electric: { label:"電気", block:"fixed", row:"electric" },
+    gas:      { label:"ガス", block:"fixed", row:"gas" },
+
+    food:        { label:"食費", block:"daily", row:"food" },
+    daily_goods: { label:"日用品", block:"daily", row:"daily_goods" },
+    zennosuke:   { label:"ぜんのすけ", block:"daily", row:"zennosuke" },
+
+    car:          { label:"自動車", block:"special", row:"car" },
+    hobby:        { label:"趣味娯楽", block:"special", row:"hobby" },
     other_special:{ label:"その他（特別費）", block:"special", row:"other_special" },
-    new_home:     { label:"新居関係",     block:"special", row:"new_home" },
+    new_home:     { label:"新居関係", block:"special", row:"new_home" },
   };
 
   // ====== ブロック定義 ======
   const BLOCKS = [
     {
       key: "fixed",
-      title: "毎月の固定費・ライフライン",
-      num: "1",
-      hint: "按分あり（電気/ガスは確定値入力・推移グラフあり）",
+      title: "1) 毎月の固定費・ライフライン",
+      hint: "按分あり（電気/ガスは確定値入力＆推移グラフあり）",
       rows: [
-        { id:"mortgage",     label:"住宅ローン返済",     categoryKey:"default", locked:true },
-        { id:"electric",     label:"電気",              categoryKey:"default", trendKey:"electric" },
-        { id:"gas",          label:"ガス",              categoryKey:"default", trendKey:"gas" },
-        { id:"water",        label:"水道",              categoryKey:"default" },
-        { id:"fixed_carry",  label:"前月未精算（固定費・自動）", categoryKey:"default", isCarryOver:true, autoCarryLocked:true },
+        { id:"mortgage", label:"住宅ローン返済", categoryKey:"default", locked:true },
+        { id:"electric", label:"電気", categoryKey:"default", trendKey:"electric" },
+        { id:"gas", label:"ガス", categoryKey:"default", trendKey:"gas" },
+        { id:"water", label:"水道", categoryKey:"default" },
+        { id:"fixed_carry", label:"前月未精算（固定費・自動）", categoryKey:"default", isCarryOver:true, autoCarryLocked:true },
       ]
     },
     {
       key: "special",
-      title: "特別な出費",
-      num: "2",
-      hint: "按分あり（自動車/趣味娯楽/その他/新居関係は確定・推移あり）",
+      title: "2) 特別な出費",
+      hint: "按分あり（自動車/趣味娯楽/その他/新居関係は確定＆推移あり）",
       rows: [
-        { id:"car",           label:"自動車",           categoryKey:"default", trendKey:"car" },
-        { id:"hobby",         label:"趣味娯楽",         categoryKey:"default", trendKey:"hobby" },
-        { id:"other_special", label:"その他",           categoryKey:"default", trendKey:"other_special" },
-        { id:"new_home",      label:"新居関係",         categoryKey:"new_home", trendKey:"new_home" },
+        { id:"car", label:"自動車", categoryKey:"default", trendKey:"car" },
+        { id:"hobby", label:"趣味娯楽", categoryKey:"default", trendKey:"hobby" },
+        { id:"other_special", label:"その他", categoryKey:"default", trendKey:"other_special" },
+        { id:"new_home", label:"新居関係", categoryKey:"new_home", trendKey:"new_home" },
         { id:"special_carry", label:"前月未精算（特別費・自動）", categoryKey:"default", isCarryOver:true, autoCarryLocked:true },
       ]
     },
     {
       key: "daily",
-      title: "食費・日用品・ぜんのすけ",
-      num: "3",
-      hint: "按分あり（食費/日用品/ぜんのすけは確定値入力・推移グラフあり）",
+      title: "3) 食費・日用品・ぜんのすけ",
+      hint: "按分あり（食費/日用品/ぜんのすけは確定値入力＆推移グラフあり）",
       rows: [
-        { id:"food",        label:"食費",       categoryKey:"default", trendKey:"food" },
-        { id:"daily_goods", label:"日用品",     categoryKey:"default", trendKey:"daily_goods" },
-        { id:"zennosuke",   label:"ぜんのすけ", categoryKey:"default", trendKey:"zennosuke" },
-        { id:"food_carry",  label:"前月未精算（食費・自動）",  categoryKey:"default", isCarryOver:true, autoCarryLocked:true },
+        { id:"food", label:"食費", categoryKey:"default", trendKey:"food" },
+        { id:"daily_goods", label:"日用品", categoryKey:"default", trendKey:"daily_goods" },
+        { id:"zennosuke", label:"ぜんのすけ", categoryKey:"default", trendKey:"zennosuke" },
+        { id:"food_carry", label:"前月未精算（食費・自動）", categoryKey:"default", isCarryOver:true, autoCarryLocked:true },
         { id:"goods_carry", label:"前月未精算（日用品・自動）", categoryKey:"default", isCarryOver:true, autoCarryLocked:true },
       ]
     },
     {
       key: "yukaPaid",
-      title: "ゆかが出したお金（妻の立替）",
-      num: "4",
-      hint: "按分なし（妻の立替実額）",
+      title: "4) ゆかが出したお金（妻の立替）",
+      hint: "ここは按分なし（妻の立替実額）",
       rows: [
-        { id:"y_food",    label:"食費" },
-        { id:"y_goods",   label:"日用品" },
+        { id:"y_food", label:"食費" },
+        { id:"y_goods", label:"日用品" },
         { id:"y_zennosuke", label:"ぜんのすけ" },
-        { id:"y_other",   label:"その他" },
-        { id:"y_carry",   label:"前月未精算（立替）", isCarryOver:true, autoCarryLocked:true },
+        { id:"y_other", label:"その他" },
+        { id:"y_carry", label:"前月未精算（立替）", isCarryOver:true, autoCarryLocked:true },
       ]
     }
   ];
 
-  // ====== LS ======
-  const LS_PREFIX   = "kakei_v4:";
+  // ====== 保存キー ======
+  const LS_PREFIX = "kakei_v4:";
   const LS_SETTINGS = LS_PREFIX + "settings";
-  const LS_MONTH    = (m) => LS_PREFIX + "month:" + m;
+  const LS_MONTH = (m) => LS_PREFIX + "month:" + m;
 
-  // ====== Settings ======
+  // ====== 設定（按分） ======
   const defaultSettings = () => ({
     splitDefault: { your: 2/3, yuka: 1/3 },
-    splitByCategory: { "new_home": { your: 0.5, yuka: 0.5 } }
+    splitByCategory: { "new_home": { your: 1/2, yuka: 1/2 } }
   });
   function loadSettings(){
     try{
-      const raw = localStorage.getItem(LS_SETTINGS);
+      const raw = safeStorage.get(LS_SETTINGS);
       if(!raw) return defaultSettings();
       const obj = JSON.parse(raw);
       const base = defaultSettings();
       return {
-        splitDefault: obj.splitDefault ?? base.splitDefault,
-        splitByCategory: obj.splitByCategory ?? base.splitByCategory
+        splitDefault: isValidSplit(obj?.splitDefault) ? obj.splitDefault : base.splitDefault,
+        splitByCategory: isValidSplitMap(obj?.splitByCategory) ? obj.splitByCategory : base.splitByCategory
       };
     }catch(e){ return defaultSettings(); }
   }
-  function saveSettings(s){ localStorage.setItem(LS_SETTINGS, JSON.stringify(s)); }
+  function saveSettings(s){ safeStorage.set(LS_SETTINGS, JSON.stringify(s)); }
 
-  // ====== Month Keys ======
+  // ====== バリデーション ======
+  function isFiniteNumber(n){ return typeof n === "number" && isFinite(n); }
+  function isValidRatio(n){ return isFiniteNumber(n) && n >= 0 && n <= 1; }
+  function isValidSplit(sp){
+    return !!sp && isValidRatio(sp.your) && isValidRatio(sp.yuka);
+  }
+  function isValidSplitMap(m){
+    if(!m || typeof m !== "object" || Array.isArray(m)) return false;
+    for(const k in m){
+      if(!isValidSplit(m[k])) return false;
+    }
+    return true;
+  }
+  function isValidMonthKey(s){
+    if(typeof s !== "string") return false;
+    return normalizeMonthKey(s) === s;
+  }
+  function isValidBlocksShape(blocks){
+    if(!blocks || typeof blocks !== "object" || Array.isArray(blocks)) return false;
+    for(const b of BLOCKS){
+      const sub = blocks[b.key];
+      if(!sub || typeof sub !== "object" || Array.isArray(sub)) return false;
+      for(const r of b.rows){
+        const v = sub[r.id];
+        // 未定義は許容（filled で補う）、数値なら有限のみ許容
+        if(v !== undefined && !isFiniteNumber(v)) return false;
+      }
+    }
+    return true;
+  }
+  function isValidFinalsShape(finals){
+    if(finals === undefined) return true;
+    if(!finals || typeof finals !== "object" || Array.isArray(finals)) return false;
+    for(const k in finals){
+      const v = finals[k];
+      if(v !== undefined && !isFiniteNumber(v)) return false;
+    }
+    return true;
+  }
+
+  // ====== 月キー ======
   function todayMonthKey(){
     const d = new Date();
-    return String(d.getFullYear()) + String(d.getMonth()+1).padStart(2,"0");
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,"0");
+    return ""+y+m;
   }
-  function mkToInputVal(mk){ return mk.slice(0,4) + "-" + mk.slice(4,6); }
-  function inputValToMk(v){ return v ? v.replace("-","") : null; }
-  function shiftMonthKey(mk, delta){
-    const y = Number(mk.slice(0,4));
-    const m = Number(mk.slice(4,6));
+  function normalizeMonthKey(v){
+    const s = (v||"").replace(/[^\d]/g,"").slice(0,6);
+    if(s.length !== 6) return null;
+    const y = Number(s.slice(0,4));
+    const m = Number(s.slice(4,6));
+    if(!(y>=2000 && y<=2100 && m>=1 && m<=12)) return null;
+    return s;
+  }
+  function shiftMonthKey(monthKey, delta){
+    const y = Number(monthKey.slice(0,4));
+    const m = Number(monthKey.slice(4,6));
     const d = new Date(y, m-1, 1);
     d.setMonth(d.getMonth()+delta);
-    return String(d.getFullYear()) + String(d.getMonth()+1).padStart(2,"0");
-  }
-  function formatMonthLabel(mk){
-    return mk.slice(0,4) + "年" + String(Number(mk.slice(4,6))) + "月";
+    const ny = d.getFullYear();
+    const nm = String(d.getMonth()+1).padStart(2,"0");
+    return ""+ny+nm;
   }
 
-  // ====== Month Data ======
-  function newMonthData(mk){
-    const data = { monthKey:mk, blocks:{}, finals:{} };
+  // ====== 月次データ ======
+  function newMonthData(monthKey){
+    const data = { monthKey, blocks: {}, finals: {} };
     for(const b of BLOCKS){
       data.blocks[b.key] = {};
       for(const r of b.rows) data.blocks[b.key][r.id] = 0;
@@ -978,96 +635,139 @@
     data.blocks.fixed.mortgage = FIXED_MORTGAGE;
     return data;
   }
-  function loadMonth(mk){
+
+  function loadMonth(monthKey){
     try{
-      const raw = localStorage.getItem(LS_MONTH(mk));
+      const raw = safeStorage.get(LS_MONTH(monthKey));
       if(!raw){
-        const fresh = newMonthData(mk);
-        localStorage.setItem(LS_MONTH(mk), JSON.stringify(fresh));
+        const fresh = newMonthData(monthKey);
+        safeStorage.set(LS_MONTH(monthKey), JSON.stringify(fresh));
         return fresh;
       }
       const obj = JSON.parse(raw);
-      const filled = newMonthData(mk);
+      const filled = newMonthData(monthKey);
+
       for(const b of BLOCKS){
         if(obj.blocks && obj.blocks[b.key]){
           for(const r of b.rows){
             const v = obj.blocks[b.key][r.id];
-            if(typeof v === "number") filled.blocks[b.key][r.id] = v;
+            if(isFiniteNumber(v)) filled.blocks[b.key][r.id] = v;
           }
         }
       }
       if(obj.finals){
         for(const k in TREND_ITEMS){
-          if(typeof obj.finals[k] === "number") filled.finals[k] = obj.finals[k];
+          if(isFiniteNumber(obj.finals[k])) filled.finals[k] = obj.finals[k];
         }
       }
       filled.blocks.fixed.mortgage = FIXED_MORTGAGE;
-      localStorage.setItem(LS_MONTH(mk), JSON.stringify(filled));
+      safeStorage.set(LS_MONTH(monthKey), JSON.stringify(filled));
       return filled;
     }catch(e){
-      const fresh = newMonthData(mk);
-      localStorage.setItem(LS_MONTH(mk), JSON.stringify(fresh));
+      const fresh = newMonthData(monthKey);
+      safeStorage.set(LS_MONTH(monthKey), JSON.stringify(fresh));
       return fresh;
     }
   }
+
   function saveMonth(data){
     if(data?.blocks?.fixed) data.blocks.fixed.mortgage = FIXED_MORTGAGE;
-    localStorage.setItem(LS_MONTH(data.monthKey), JSON.stringify(data));
+    safeStorage.set(LS_MONTH(data.monthKey), JSON.stringify(data));
   }
 
-  // ====== Format ======
+  // ====== 表示 ======
   const yen = (n) => {
     const sign = n < 0 ? "-" : "";
-    return sign + "¥" + Math.abs(Math.round(n)).toLocaleString("ja-JP");
+    const v = Math.abs(n);
+    const rounded = Math.round(v);
+    return sign + "¥" + rounded.toLocaleString("ja-JP");
   };
-  const num = yen;
+  const num = (n) => yen(n);
 
+  // ====== 按分 ======
   function getSplit(settings, categoryKey){
-    if(categoryKey && settings.splitByCategory && settings.splitByCategory[categoryKey])
+    if(categoryKey && settings.splitByCategory && settings.splitByCategory[categoryKey]){
       return settings.splitByCategory[categoryKey];
+    }
     return settings.splitDefault;
   }
 
-  // ====== Auto Carry ======
+  // ====== 前月未精算（自動） ======
   function effectiveFinalOrProvisional(md, trendKey, block, row){
     const provisional = (md.blocks?.[block]?.[row] || 0);
-    const finalInput  = (md.finals?.[trendKey] || 0);
+    const finalInput = (md.finals?.[trendKey] || 0);
     return finalInput > 0 ? finalInput : provisional;
   }
-  function diffNonNegative(f, p){ const d = f - p; return d < 0 ? 0 : d; }
+  function diffNonNegative(finalVal, provisional){
+    const d = finalVal - provisional;
+    return d < 0 ? 0 : d;
+  }
 
   function applyAutoCarry(monthData){
     const prevKey = shiftMonthKey(monthData.monthKey, -1);
-    const prev    = loadMonth(prevKey);
+    const prev = loadMonth(prevKey);
 
     // 食費
-    { const p = prev.blocks.daily.food||0; const f = effectiveFinalOrProvisional(prev,"food","daily","food"); monthData.blocks.daily.food_carry = diffNonNegative(f,p); }
+    {
+      const p = prev.blocks.daily.food || 0;
+      const f = effectiveFinalOrProvisional(prev, "food", "daily", "food");
+      monthData.blocks.daily.food_carry = diffNonNegative(f, p);
+    }
+
     // 日用品
-    { const p = prev.blocks.daily.daily_goods||0; const f = effectiveFinalOrProvisional(prev,"daily_goods","daily","daily_goods"); monthData.blocks.daily.goods_carry = diffNonNegative(f,p); }
-    // 固定費
-    { const eP=prev.blocks.fixed.electric||0; const eF=effectiveFinalOrProvisional(prev,"electric","fixed","electric"); const dE=diffNonNegative(eF,eP);
-      const gP=prev.blocks.fixed.gas||0; const gF=effectiveFinalOrProvisional(prev,"gas","fixed","gas"); const dG=diffNonNegative(gF,gP);
-      monthData.blocks.fixed.fixed_carry = dE+dG; }
-    // 特別費
-    { const carP=prev.blocks.special.car||0; const carF=effectiveFinalOrProvisional(prev,"car","special","car"); const dCar=diffNonNegative(carF,carP);
-      const hP=prev.blocks.special.hobby||0; const hF=effectiveFinalOrProvisional(prev,"hobby","special","hobby"); const dH=diffNonNegative(hF,hP);
-      const oP=prev.blocks.special.other_special||0; const oF=effectiveFinalOrProvisional(prev,"other_special","special","other_special"); const dO=diffNonNegative(oF,oP);
-      const nP=prev.blocks.special.new_home||0; const nF=effectiveFinalOrProvisional(prev,"new_home","special","new_home"); const dN=diffNonNegative(nF,nP);
-      monthData.blocks.special.special_carry = dCar+dH+dO+dN; }
+    {
+      const p = prev.blocks.daily.daily_goods || 0;
+      const f = effectiveFinalOrProvisional(prev, "daily_goods", "daily", "daily_goods");
+      monthData.blocks.daily.goods_carry = diffNonNegative(f, p);
+    }
+
+    // 固定費（電気＋ガス差分合算）
+    {
+      const eP = prev.blocks.fixed.electric || 0;
+      const eF = effectiveFinalOrProvisional(prev, "electric", "fixed", "electric");
+      const dE = diffNonNegative(eF, eP);
+
+      const gP = prev.blocks.fixed.gas || 0;
+      const gF = effectiveFinalOrProvisional(prev, "gas", "fixed", "gas");
+      const dG = diffNonNegative(gF, gP);
+
+      monthData.blocks.fixed.fixed_carry = dE + dG;
+    }
+
+    // 特別費（自動車＋趣味娯楽＋その他＋新居関係 差分合算）
+    {
+      const carP = prev.blocks.special.car || 0;
+      const carF = effectiveFinalOrProvisional(prev, "car", "special", "car");
+      const dCar = diffNonNegative(carF, carP);
+
+      const hP = prev.blocks.special.hobby || 0;
+      const hF = effectiveFinalOrProvisional(prev, "hobby", "special", "hobby");
+      const dH = diffNonNegative(hF, hP);
+
+      const oP = prev.blocks.special.other_special || 0;
+      const oF = effectiveFinalOrProvisional(prev, "other_special", "special", "other_special");
+      const dO = diffNonNegative(oF, oP);
+
+      const nP = prev.blocks.special.new_home || 0;
+      const nF = effectiveFinalOrProvisional(prev, "new_home", "special", "new_home");
+      const dN = diffNonNegative(nF, nP);
+
+      monthData.blocks.special.special_carry = dCar + dH + dO + dN;
+    }
 
     monthData.blocks.fixed.mortgage = FIXED_MORTGAGE;
   }
 
-  // ====== Compute ======
+  // ====== 集計 ======
   function computeAll(monthData, settings){
     const totalsByBlock = {};
     for(const b of BLOCKS){
       if(b.key === "yukaPaid"){
         let sum = 0;
         for(const r of b.rows) sum += (monthData.blocks[b.key][r.id] || 0);
-        totalsByBlock[b.key] = { amount:sum, your:0, yuka:0 };
+        totalsByBlock[b.key] = { amount: sum, your: 0, yuka: 0 };
       }else{
-        let amount=0, your=0, yuka=0;
+        let amount = 0, your = 0, yuka = 0;
         for(const r of b.rows){
           const a = (monthData.blocks[b.key][r.id] || 0);
           amount += a;
@@ -1078,468 +778,555 @@
         totalsByBlock[b.key] = { amount, your, yuka };
       }
     }
-    const yukaFinal  = (totalsByBlock.fixed?.yuka||0) + (totalsByBlock.special?.yuka||0) + (totalsByBlock.daily?.yuka||0);
-    const yukaPaid   = (totalsByBlock.yukaPaid?.amount||0);
-    const diff       = yukaFinal - yukaPaid - ZENNOSUKE_INVEST_DEDUCTION;
+
+    const yukaFinal =
+      (totalsByBlock.fixed?.yuka || 0) +
+      (totalsByBlock.special?.yuka || 0) +
+      (totalsByBlock.daily?.yuka || 0);
+
+    const yukaPaid = (totalsByBlock.yukaPaid?.amount || 0);
+
+    // 差額（控除込み）
+    const diff = yukaFinal - yukaPaid - ZENNOSUKE_INVEST_DEDUCTION;
+
     const receiveRaw = Math.max(0, diff);
-    const receiveFloor100 = Math.floor(receiveRaw / 100) * 100;
+
+    // ★受領額を指定単位で切り捨て
+    const receiveFloor100 = Math.floor(receiveRaw / RECEIVE_ROUND_UNIT) * RECEIVE_ROUND_UNIT;
+
     const status = diff < 0
-      ? { type:"warn", text:"⚠ 妻へ支払いが必要" }
-      : { type:"ok",   text:"✓ 精算OK" };
+      ? { type:"warn", text:"要確認：妻へ支払いが必要（控除後にマイナス）" }
+      : { type:"ok", text:"OK" };
+
     return { totalsByBlock, yukaFinal, yukaPaid, diff, receiveRaw, receiveFloor100, status };
   }
 
-  // ====== Toast ======
-  function toast(msg, type="", duration=2500){
-    const container = document.getElementById("toast-container");
-    const el = document.createElement("div");
-    el.className = "toast" + (type ? " "+type : "");
-    el.textContent = msg;
-    container.appendChild(el);
-    setTimeout(() => {
-      el.classList.add("removing");
-      el.addEventListener("animationend", () => el.remove());
-    }, duration);
-  }
-
-  // ====== Confirm ======
-  function showConfirm(title, msg, btnLabel, onOk){
-    document.getElementById("confirmTitle").textContent = title;
-    document.getElementById("confirmMsg").textContent   = msg;
-    document.getElementById("btnConfirmOk").textContent  = btnLabel;
-    document.getElementById("confirmBackdrop").classList.add("open");
-
-    const ok  = document.getElementById("btnConfirmOk");
-    const cancel = document.getElementById("btnConfirmCancel");
-    const close  = () => document.getElementById("confirmBackdrop").classList.remove("open");
-
-    const onOkClick = () => { close(); onOk(); ok.removeEventListener("click",onOkClick); cancel.removeEventListener("click",close); };
-    ok.addEventListener("click", onOkClick);
-    cancel.addEventListener("click", () => { close(); cancel.removeEventListener("click",close); });
-  }
-
-  // ====== State ======
-  let settings  = loadSettings();
-  let monthKey  = todayMonthKey();
-  let monthData = null;
-  let chartInstance = null;
-  const blockOpenState = {};
-
-  // ====== Render Blocks ======
+  // ====== UI ======
   const elBlocks = document.getElementById("blocks");
+  const elMonth = document.getElementById("month");
+  const elFinalReceive = document.getElementById("finalReceive");
+  const elBreakdown = document.getElementById("breakdown");
+  const elStatus = document.getElementById("status");
+
+  const elRatioYour = document.getElementById("ratioYour");
+  const elRatioYuka = document.getElementById("ratioYuka");
+  const elRatioNewHomeYour = document.getElementById("ratioNewHomeYour");
+  const elRatioNewHomeYuka = document.getElementById("ratioNewHomeYuka");
+
+  // Modal
+  const elBackdrop = document.getElementById("modalBackdrop");
+  const elModalTitle = document.getElementById("modalTitle");
+  const elModalMeta = document.getElementById("modalMeta");
+  const btnCloseModal = document.getElementById("btnCloseModal");
+  const chartCanvas = document.getElementById("chartCanvas");
+  let chartInstance = null;
+
+  let settings = loadSettings();
+  let monthKey = todayMonthKey();
+  let monthData = null;
+
+  // ====== debounce保存 ======
+  const saveMonthDebounced = debounce((dataRef) => {
+    saveMonth(dataRef);
+  }, SAVE_DEBOUNCE_MS);
+
+  // 翌月キャリーの更新もdebounce（入力のたびに翌月を書くのは重い）
+  const updateNextMonthCarryDebounced = debounce((currentKey) => {
+    const nextKey = shiftMonthKey(currentKey, +1);
+    const next = loadMonth(nextKey);
+    applyAutoCarry(next);
+    saveMonth(next);
+  }, SAVE_DEBOUNCE_MS);
 
   function renderBlocks(){
     elBlocks.innerHTML = "";
     for(const b of BLOCKS){
-      const isOpen = blockOpenState[b.key] !== false; // default open
-
       const card = document.createElement("div");
       card.className = "card";
-      card.dataset.blockKey = b.key;
-
-      const header = document.createElement("div");
-      header.className = "card-header" + (isOpen ? " open" : "");
-      header.innerHTML = `
-        <div class="card-title-group">
-          <div class="card-number">${b.num}</div>
+      card.innerHTML = `
+        <div class="hd">
           <div>
-            <div class="card-title">${escapeHtml(b.title)}</div>
-            <div class="card-hint">${escapeHtml(b.hint||"")}</div>
+            <h2>${escapeHtml(b.title)}</h2>
+            <div class="hint">${escapeHtml(b.hint || "")}</div>
           </div>
+          <div></div>
         </div>
-        <div style="display:flex;align-items:center;gap:4px">
-          <span class="card-total-preview" id="preview-${b.key}">—</span>
-          <svg class="card-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M6 9l6 6 6-6"/>
-          </svg>
+        <div class="bd">
+          ${renderTable(b)}
         </div>
       `;
-
-      const body = document.createElement("div");
-      body.className = "card-body" + (isOpen ? " open" : "");
-      body.innerHTML = `<div class="tbl-wrap">${renderTable(b)}</div>`;
-
-      header.addEventListener("click", () => {
-        const nowOpen = header.classList.contains("open");
-        blockOpenState[b.key] = !nowOpen;
-        header.classList.toggle("open", !nowOpen);
-        body.classList.toggle("open", !nowOpen);
-      });
-
-      card.appendChild(header);
-      card.appendChild(body);
       elBlocks.appendChild(card);
     }
-    bindInputs();
+    // ※ イベントリスナーは attachBlockEvents() で一度だけ付ける（イベント委譲）
+  }
+
+  // イベント委譲：elBlocksに1つだけリスナーを付ける（renderBlocksで付け直さない）
+  function attachBlockEvents(){
+    // 入力イベント（暫定・確定 両方）
+    elBlocks.addEventListener("input", (ev) => {
+      const inp = ev.target;
+      if(!(inp instanceof HTMLInputElement)) return;
+      const type = inp.getAttribute("data-type");
+      if(type === "amount"){
+        handleAmountInput(inp);
+      }else if(type === "final"){
+        handleFinalInput(inp);
+      }
+    });
+
+    // フォーカス時に全選択（focusinはバブルする）
+    elBlocks.addEventListener("focusin", (ev) => {
+      const inp = ev.target;
+      if(inp instanceof HTMLInputElement && inp.classList.contains("cell-input")){
+        inp.select();
+      }
+    });
+
+    // 推移ボタンクリック
+    elBlocks.addEventListener("click", (ev) => {
+      const btn = ev.target.closest("button[data-action='trend'][data-trendkey]");
+      if(!btn) return;
+      openTrendModal(btn.getAttribute("data-trendkey"));
+    });
+  }
+
+  function handleAmountInput(inp){
+    const bk = inp.getAttribute("data-block");
+    const rk = inp.getAttribute("data-row");
+    if(!bk || !rk) return;
+
+    // 住宅ローンは固定値を強制
+    if(bk === "fixed" && rk === "mortgage"){
+      inp.value = FIXED_MORTGAGE;
+      monthData.blocks.fixed.mortgage = FIXED_MORTGAGE;
+      saveMonthDebounced(monthData);
+      updateAll();
+      return;
+    }
+
+    const v = toNumber(inp.value);
+    if(!monthData.blocks[bk]) return;
+    monthData.blocks[bk][rk] = v;
+
+    applyAutoCarry(monthData);
+    saveMonthDebounced(monthData);
+    updateAll();
+  }
+
+  function handleFinalInput(inp){
+    const k = inp.getAttribute("data-trendkey");
+    if(!k) return;
+    const v = toNumber(inp.value);
+    monthData.finals[k] = v;
+
+    // 翌月のキャリーもdebounceで更新
+    updateNextMonthCarryDebounced(monthData.monthKey);
+    saveMonthDebounced(monthData);
+    updateAll();
   }
 
   function renderTable(block){
     const isYukaPaid = block.key === "yukaPaid";
     const cols = isYukaPaid
-      ? [
-          { label:"項目",     cls:"" },
-          { label:"金額",     cls:"num" },
-        ]
-      : [
-          { label:"項目",         cls:"" },
-          { label:"金額（暫定）", cls:"num" },
-          { label:"確定値（任意）", cls:"num" },
-          { label:"あなた負担",   cls:"num" },
-          { label:"妻負担",       cls:"num" },
-        ];
+      ? ["項目", "金額"]
+      : ["項目", "金額(暫定)", "確定(任意)", "あなた負担", "妻負担"];
 
-    const head = `<thead><tr>${cols.map(c=>`<th class="${c.cls}">${escapeHtml(c.label)}</th>`).join("")}</tr></thead>`;
+    const head = `<thead><tr>${cols.map(c => `<th>${escapeHtml(c)}</th>`).join("")}</tr></thead>`;
 
     const bodyRows = block.rows.map(r => {
-      const carryTag    = r.isCarryOver ? `<span class="tag tag-carry">繰越</span>` : "";
-      const exceptionTag = (r.categoryKey==="new_home") ? `<span class="tag tag-exception">例外</span>` : "";
-      const amountVal   = monthData?.blocks?.[block.key]?.[r.id] ?? 0;
-      const isMortgage  = (block.key==="fixed" && r.id==="mortgage");
-      const isAutoCarry = !!r.autoCarryLocked || !!r.isCarryOver;
-      const trendKey    = r.trendKey || null;
+      const carry = r.isCarryOver ? `<span class="tag carry">繰越</span>` : "";
+      const amountVal = monthData?.blocks?.[block.key]?.[r.id] ?? 0;
 
-      const trendBtnHtml = trendKey ? `
-        <button class="trend-btn" data-action="trend" data-trendkey="${trendKey}" title="推移グラフを表示">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-          </svg>
-          推移
-        </button>` : "";
+      const isMortgageLocked = (block.key==="fixed" && r.id==="mortgage");
+      const isAutoCarryLocked = !!r.autoCarryLocked || !!r.isCarryOver;
+
+      const trendKey = r.trendKey || null;
+      const trendBtn = trendKey ? `<button class="btn small" data-action="trend" data-trendkey="${trendKey}">📈 推移</button>` : "";
 
       if(isYukaPaid){
-        const dis = isAutoCarry ? "disabled" : "";
-        return `<tr>
-          <td><div class="row-label">${escapeHtml(r.label)}${carryTag}</div></td>
-          <td class="num"><input class="cell-input" inputmode="numeric" type="number" step="1" ${dis}
-            value="${amountVal}" data-type="amount" data-block="${block.key}" data-row="${r.id}"></td>
-        </tr>`;
+        const disabled = isAutoCarryLocked ? "disabled" : "";
+        return `
+          <tr>
+            <td><div class="rowlabel">${escapeHtml(r.label)} ${carry}</div></td>
+            <td class="num">
+              <input class="cell-input" inputmode="numeric" type="number" step="1"
+                     ${disabled}
+                     value="${amountVal}"
+                     data-type="amount" data-block="${block.key}" data-row="${r.id}">
+            </td>
+          </tr>
+        `;
       }else{
-        const dis = (isMortgage||isAutoCarry) ? "disabled" : "";
-        let finalCell = `<td class="num">—</td>`;
+        const disabled = (isMortgageLocked || isAutoCarryLocked) ? "disabled" : "";
+
+        let finalCell = `<td class="num">${trendBtn || "—"}</td>`;
         if(trendKey){
-          const fv = monthData?.finals?.[trendKey] ?? 0;
-          finalCell = `<td class="num"><div class="final-wrap">
-            ${trendBtnHtml}
-            <input class="cell-input final" style="max-width:110px" inputmode="numeric" type="number" step="1"
-              value="${fv}" data-type="final" data-trendkey="${trendKey}" title="確定値（入力すると確定値を使用）">
-          </div></td>`;
-        }else if(trendBtnHtml){
-          finalCell = `<td class="num">${trendBtnHtml}</td>`;
+          const finalVal = monthData?.finals?.[trendKey] ?? 0;
+          finalCell = `
+            <td class="num">
+              <div style="display:flex; gap:8px; justify-content:flex-end; align-items:center; flex-wrap:wrap;">
+                ${trendBtn}
+                <input class="cell-input" style="width:120px" inputmode="numeric" type="number" step="1"
+                       value="${finalVal}"
+                       data-type="final" data-trendkey="${trendKey}">
+              </div>
+            </td>
+          `;
         }
 
-        return `<tr data-block="${block.key}" data-row="${r.id}">
-          <td><div class="row-label">${escapeHtml(r.label)}${carryTag}${exceptionTag}</div></td>
-          <td class="num"><input class="cell-input" inputmode="numeric" type="number" step="1" ${dis}
-            value="${isMortgage ? FIXED_MORTGAGE : amountVal}"
-            data-type="amount" data-block="${block.key}" data-row="${r.id}"></td>
-          ${finalCell}
-          <td class="num" data-cell="your">—</td>
-          <td class="num" data-cell="yuka">—</td>
-        </tr>`;
+        return `
+          <tr data-block="${block.key}" data-row="${r.id}">
+            <td>
+              <div class="rowlabel">
+                ${escapeHtml(r.label)} ${carry}
+                ${r.categoryKey==="new_home" ? `<span class="tag">例外</span>` : ""}
+              </div>
+            </td>
+
+            <td class="num">
+              <input class="cell-input" inputmode="numeric" type="number" step="1"
+                     ${disabled}
+                     value="${isMortgageLocked ? FIXED_MORTGAGE : amountVal}"
+                     data-type="amount" data-block="${block.key}" data-row="${r.id}">
+            </td>
+
+            ${finalCell}
+
+            <td class="num" data-cell="your">—</td>
+            <td class="num" data-cell="yuka">—</td>
+          </tr>
+        `;
       }
     }).join("");
 
     const footer = isYukaPaid ? `
-      <tfoot><tr>
-        <td>合計</td>
-        <td class="num" data-total="${block.key}:amount">—</td>
-      </tr></tfoot>` : `
-      <tfoot><tr>
-        <td>合計</td>
-        <td class="num" data-total="${block.key}:amount">—</td>
-        <td></td>
-        <td class="num" data-total="${block.key}:your">—</td>
-        <td class="num" data-total="${block.key}:yuka">—</td>
-      </tr></tfoot>`;
+      <tfoot>
+        <tr class="tot">
+          <td>合計</td>
+          <td class="num" data-total="${block.key}:amount">—</td>
+        </tr>
+      </tfoot>
+    ` : `
+      <tfoot>
+        <tr class="tot">
+          <td>合計</td>
+          <td class="num" data-total="${block.key}:amount">—</td>
+          <td class="num">—</td>
+          <td class="num" data-total="${block.key}:your">—</td>
+          <td class="num" data-total="${block.key}:yuka">—</td>
+        </tr>
+      </tfoot>
+    `;
 
     return `<table>${head}<tbody>${bodyRows}</tbody>${footer}</table>`;
   }
 
-  function bindInputs(){
-    elBlocks.querySelectorAll("input[data-type='amount'][data-block][data-row]").forEach(inp => {
-      inp.addEventListener("input", () => {
-        const bk = inp.getAttribute("data-block");
-        const rk = inp.getAttribute("data-row");
-        if(bk==="fixed" && rk==="mortgage"){
-          inp.value = FIXED_MORTGAGE;
-          monthData.blocks.fixed.mortgage = FIXED_MORTGAGE;
-          saveMonth(monthData); updateAll(); return;
-        }
-        monthData.blocks[bk][rk] = toNumber(inp.value);
-        applyAutoCarry(monthData);
-        saveMonth(monthData);
-        updateAll();
-        scheduleAutoSaveToast();
-      });
-      inp.addEventListener("focus", () => inp.select());
-    });
-
-    elBlocks.querySelectorAll("input[data-type='final'][data-trendkey]").forEach(inp => {
-      inp.addEventListener("input", () => {
-        const k = inp.getAttribute("data-trendkey");
-        monthData.finals[k] = toNumber(inp.value);
-        const nextKey = shiftMonthKey(monthData.monthKey, +1);
-        const next    = loadMonth(nextKey);
-        applyAutoCarry(next);
-        saveMonth(next);
-        saveMonth(monthData);
-        updateAll();
-        scheduleAutoSaveToast();
-      });
-      inp.addEventListener("focus", () => inp.select());
-    });
-
-    elBlocks.querySelectorAll("button[data-action='trend'][data-trendkey]").forEach(btn => {
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        openTrendModal(btn.getAttribute("data-trendkey"));
-      });
-    });
-  }
-
-  // debounced toast
-  let toastTimer;
-  function scheduleAutoSaveToast(){
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => toast("保存しました ✓", "ok", 1800), 600);
-  }
-
-  // ====== Update UI ======
   function updateAll(){
     applyAutoCarry(monthData);
     const c = computeAll(monthData, settings);
 
-    // row splits
+    // 行ごとの按分
     for(const b of BLOCKS){
-      if(b.key==="yukaPaid") continue;
+      if(b.key === "yukaPaid") continue;
       for(const r of b.rows){
         const tr = elBlocks.querySelector(`tr[data-block="${b.key}"][data-row="${r.id}"]`);
         if(!tr) continue;
         const amount = (monthData.blocks[b.key][r.id] || 0);
         const sp = getSplit(settings, r.categoryKey || "default");
-        const yEl = tr.querySelector('[data-cell="your"]');
-        const kEl = tr.querySelector('[data-cell="yuka"]');
-        if(yEl) yEl.textContent = num(amount * sp.your);
-        if(kEl) kEl.textContent = num(amount * sp.yuka);
+        tr.querySelector('[data-cell="your"]').textContent = num(amount * sp.your);
+        tr.querySelector('[data-cell="yuka"]').textContent = num(amount * sp.yuka);
       }
     }
 
-    // block totals
+    // ブロック合計
     for(const b of BLOCKS){
       const t = c.totalsByBlock[b.key];
       if(!t) continue;
-      const ea = document.querySelector(`[data-total="${b.key}:amount"]`);
-      const ey = document.querySelector(`[data-total="${b.key}:your"]`);
-      const ek = document.querySelector(`[data-total="${b.key}:yuka"]`);
-      if(ea) ea.textContent = yen(t.amount);
-      if(ey) ey.textContent = num(t.your);
-      if(ek) ek.textContent = num(t.yuka);
-
-      // header preview
-      const prev = document.getElementById(`preview-${b.key}`);
-      if(prev) prev.textContent = yen(t.amount);
+      const elA = document.querySelector(`[data-total="${b.key}:amount"]`);
+      if(elA) elA.textContent = yen(t.amount);
+      const elY = document.querySelector(`[data-total="${b.key}:your"]`);
+      if(elY) elY.textContent = num(t.your);
+      const elK = document.querySelector(`[data-total="${b.key}:yuka"]`);
+      if(elK) elK.textContent = num(t.yuka);
     }
 
-    // update carry inputs
-    for(const b of BLOCKS){
-      for(const r of b.rows){
-        if(!r.autoCarryLocked) continue;
-        const inp = elBlocks.querySelector(`input[data-block="${b.key}"][data-row="${r.id}"]`);
-        if(inp) inp.value = (monthData.blocks[b.key][r.id] || 0);
-      }
-    }
-
-    // result
-    const amountWrap = document.getElementById("resultAmountWrap");
-    const elAmount   = document.getElementById("finalReceive");
-    const elStatus   = document.getElementById("status");
-
-    elAmount.textContent = c.diff < 0 ? "¥0" : yen(c.receiveFloor100);
-    elAmount.className = "result-amount " + (c.diff < 0 ? "negative" : c.receiveFloor100 > 0 ? "positive" : "");
-    amountWrap.className = "result-amount-wrap " + (c.diff < 0 ? "negative" : c.receiveFloor100 > 0 ? "positive" : "");
-    elStatus.className = "status-pill " + c.status.type;
+    // 結論（100円単位切り捨て）
+    elFinalReceive.textContent = (c.diff < 0) ? "¥0" : yen(c.receiveFloor100);
+    elStatus.className = "status " + (c.status.type === "warn" ? "warn" : "ok");
     elStatus.textContent = c.status.text;
 
-    // breakdown
-    const elBreakdown = document.getElementById("breakdown");
+    // 内訳（コンパクト＆「受領額（未丸め）」なし）
     elBreakdown.innerHTML = [
-      bItem("妻の最終負担額",          num(c.yukaFinal)),
-      bItem("妻の立替合計",            yen(c.yukaPaid)),
-      bItem("ぜんのすけ投資控除（固定）", yen(ZENNOSUKE_INVEST_DEDUCTION)),
-      bDiv(),
-      bItem("差額（未丸め）",          num(c.diff)),
-      bItemHL("受領額（100円単位）",   c.diff < 0 ? "¥0" : yen(c.receiveFloor100)),
+      rowKV("妻の最終負担額", num(c.yukaFinal)),
+      rowKV("妻の立替合計", yen(c.yukaPaid)),
+      rowKV("ぜんのすけ投資控除（固定）", yen(ZENNOSUKE_INVEST_DEDUCTION)),
+      rowKV("差額（未丸め）", num(c.diff)),
+      rowKV("受領額（100円単位）", (c.diff < 0) ? "¥0" : yen(c.receiveFloor100)),
     ].join("");
+    // ※ saveMonthはハンドラ側でdebounce実行するため、ここでは呼ばない
   }
 
-  function bItem(k, v){
-    return `<div class="breakdown-item"><span class="bk">${escapeHtml(k)}</span><span class="bv">${escapeHtml(v)}</span></div>`;
+  function rowKV(k,v){
+    return `<div class="row"><div class="k">${escapeHtml(k)}</div><div class="v">${escapeHtml(v)}</div></div>`;
   }
-  function bItemHL(k, v){
-    return `<div class="breakdown-item highlight"><span class="bk">${escapeHtml(k)}</span><span class="bv">${escapeHtml(v)}</span></div>`;
+
+  // ====== 設定UI ======
+  function renderSettings(){
+    elRatioYour.value = settings.splitDefault.your;
+    elRatioYuka.value = settings.splitDefault.yuka;
+    const nh = settings.splitByCategory["new_home"] || {your:0.5,yuka:0.5};
+    elRatioNewHomeYour.value = nh.your;
+    elRatioNewHomeYuka.value = nh.yuka;
   }
-  function bDiv(){ return `<div class="breakdown-divider"></div>`; }
+  document.getElementById("btnSaveSettings").addEventListener("click", () => {
+    const your = toNumber(elRatioYour.value);
+    const yuka = toNumber(elRatioYuka.value);
+    const nhYour = toNumber(elRatioNewHomeYour.value);
+    const nhYuka = toNumber(elRatioNewHomeYuka.value);
 
-  // ====== Month Switch ======
-  const elMonthInput = document.getElementById("month");
+    // 0〜1の範囲チェック（toNumber は負数を0に丸めているので上限のみチェック）
+    if(your > 1 || yuka > 1 || nhYour > 1 || nhYuka > 1){
+      showToast("按分比率は0〜1の範囲で入力してください。", "warn");
+      return;
+    }
 
+    settings.splitDefault.your = your;
+    settings.splitDefault.yuka = yuka;
+    settings.splitByCategory["new_home"] = { your: nhYour, yuka: nhYuka };
+    saveSettings(settings);
+    updateAll();
+    showToast("按分ルールを保存しました。", "ok");
+  });
+
+  // ====== 月切替 ======
   function setMonth(mk){
-    monthKey  = mk;
-    elMonthInput.value = mkToInputVal(mk);
+    monthKey = mk;
+    elMonth.value = mk;
     monthData = loadMonth(mk);
     monthData.blocks.fixed.mortgage = FIXED_MORTGAGE;
+
     applyAutoCarry(monthData);
     renderBlocks();
     updateAll();
   }
 
-  elMonthInput.addEventListener("change", () => {
-    const mk = inputValToMk(elMonthInput.value);
-    if(mk) setMonth(mk);
+  elMonth.addEventListener("change", () => {
+    const mk = normalizeMonthKey(elMonth.value);
+    if(!mk){
+      showToast("年月はYYYYMM（例：202512）で入力してください。", "warn");
+      elMonth.value = monthKey;
+      return;
+    }
+    setMonth(mk);
   });
+
   document.getElementById("btnPrev").addEventListener("click", () => setMonth(shiftMonthKey(monthKey, -1)));
   document.getElementById("btnNext").addEventListener("click", () => setMonth(shiftMonthKey(monthKey, +1)));
 
-  // Keyboard shortcuts
-  document.addEventListener("keydown", (e) => {
-    if(e.ctrlKey || e.metaKey){
-      if(e.key==="ArrowLeft"){ e.preventDefault(); setMonth(shiftMonthKey(monthKey,-1)); }
-      if(e.key==="ArrowRight"){ e.preventDefault(); setMonth(shiftMonthKey(monthKey,+1)); }
-    }
-    if(e.key==="Escape") closeAllModals();
-  });
-
-  // ====== Reset Month ======
   document.getElementById("btnResetMonth").addEventListener("click", () => {
-    showConfirm(
-      `${formatMonthLabel(monthKey)} を初期化`,
-      `${formatMonthLabel(monthKey)} の入力データをすべて削除します。この操作は元に戻せません。`,
-      "初期化する",
-      () => {
-        const fresh = newMonthData(monthKey);
-        localStorage.setItem(LS_MONTH(monthKey), JSON.stringify(fresh));
-        setMonth(monthKey);
-        toast(`${formatMonthLabel(monthKey)} を初期化しました`, "", 2200);
-      }
-    );
+    if(!confirm(monthKey + " の入力を初期化します。よろしいですか？")) return;
+    const fresh = newMonthData(monthKey);
+    safeStorage.set(LS_MONTH(monthKey), JSON.stringify(fresh));
+    setMonth(monthKey);
+    showToast(monthKey + " を初期化しました。", "ok");
   });
 
-  // ====== Settings Modal ======
-  const elSettingsBackdrop = document.getElementById("settingsBackdrop");
-
-  function renderSettings(){
-    document.getElementById("ratioYour").value       = settings.splitDefault.your;
-    document.getElementById("ratioYuka").value       = settings.splitDefault.yuka;
-    const nh = settings.splitByCategory["new_home"] || { your:0.5, yuka:0.5 };
-    document.getElementById("ratioNewHomeYour").value = nh.your;
-    document.getElementById("ratioNewHomeYuka").value = nh.yuka;
-  }
-
-  document.getElementById("btnSettings").addEventListener("click", () => {
-    renderSettings();
-    elSettingsBackdrop.classList.add("open");
-  });
-  document.getElementById("btnCloseSettings").addEventListener("click", () => elSettingsBackdrop.classList.remove("open"));
-  document.getElementById("btnCancelSettings").addEventListener("click", () => elSettingsBackdrop.classList.remove("open"));
-
-  document.getElementById("btnSaveSettings").addEventListener("click", () => {
-    settings.splitDefault.your            = toNumber(document.getElementById("ratioYour").value);
-    settings.splitDefault.yuka            = toNumber(document.getElementById("ratioYuka").value);
-    settings.splitByCategory["new_home"]  = {
-      your: toNumber(document.getElementById("ratioNewHomeYour").value),
-      yuka: toNumber(document.getElementById("ratioNewHomeYuka").value),
-    };
-    saveSettings(settings);
-    updateAll();
-    elSettingsBackdrop.classList.remove("open");
-    toast("按分ルールを保存しました ✓", "ok");
-  });
-
-  elSettingsBackdrop.addEventListener("click", (e) => { if(e.target===elSettingsBackdrop) elSettingsBackdrop.classList.remove("open"); });
-
-  // ====== Export / Import ======
+  // ====== エクスポート/インポート ======
   document.getElementById("btnExport").addEventListener("click", () => {
     const payload = { exportedAt: new Date().toISOString(), settings, monthData };
-    const blob    = new Blob([JSON.stringify(payload, null, 2)], { type:"application/json" });
-    const a       = document.createElement("a");
-    a.href        = URL.createObjectURL(blob);
-    a.download    = `kakei_${monthKey}.json`;
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `kakei_${monthKey}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
-    toast("エクスポートしました", "", 2000);
   });
 
   document.getElementById("fileImport").addEventListener("change", async (ev) => {
     const file = ev.target.files?.[0];
     if(!file) return;
-    const text = await file.text();
+
+    // ファイルサイズ上限（5MB）
+    if(file.size > 5 * 1024 * 1024){
+      showToast("ファイルサイズが大きすぎます（上限5MB）。", "warn");
+      ev.target.value = "";
+      return;
+    }
+
+    let text;
     try{
-      const obj = JSON.parse(text);
-      if(obj.settings){ settings = obj.settings; saveSettings(settings); renderSettings(); }
-      if(obj.monthData && obj.monthData.monthKey){
-        const mk = obj.monthData.monthKey;
-        const m  = obj.monthData;
-        if(!m.finals){ m.finals = {}; for(const k in TREND_ITEMS) m.finals[k] = 0; }
-        else { for(const k in TREND_ITEMS) if(typeof m.finals[k]!=="number") m.finals[k]=0; }
-        if(!m.blocks) m.blocks = {};
-        if(!m.blocks.fixed) m.blocks.fixed = {};
-        m.blocks.fixed.mortgage = FIXED_MORTGAGE;
-        localStorage.setItem(LS_MONTH(mk), JSON.stringify(m));
-        const nextKey = shiftMonthKey(mk, +1);
-        const next    = loadMonth(nextKey);
-        applyAutoCarry(next);
-        saveMonth(next);
-        setMonth(mk);
-        toast(`${formatMonthLabel(mk)} をインポートしました ✓`, "ok");
+      text = await file.text();
+    }catch(e){
+      showToast("ファイル読み込みに失敗しました。", "warn");
+      ev.target.value = "";
+      return;
+    }
+
+    let obj;
+    try{
+      obj = JSON.parse(text);
+    }catch(e){
+      showToast("JSONの形式が正しくありません。", "warn");
+      ev.target.value = "";
+      return;
+    }
+
+    if(!obj || typeof obj !== "object" || Array.isArray(obj)){
+      showToast("JSONのトップレベルがオブジェクトではありません。", "warn");
+      ev.target.value = "";
+      return;
+    }
+
+    // settings（任意）
+    if(obj.settings !== undefined){
+      const s = obj.settings;
+      if(!s || typeof s !== "object" || !isValidSplit(s.splitDefault) || !isValidSplitMap(s.splitByCategory)){
+        showToast("settingsの形式が不正です。", "warn");
+        ev.target.value = "";
+        return;
       }
-    }catch(e){ toast("JSONの読み込みに失敗しました", "warn"); }
-    finally{ ev.target.value = ""; }
+    }
+
+    // monthData（必須）
+    const m = obj.monthData;
+    if(!m || typeof m !== "object" || Array.isArray(m)){
+      showToast("monthDataが見つかりませんでした。", "warn");
+      ev.target.value = "";
+      return;
+    }
+    if(!isValidMonthKey(m.monthKey)){
+      showToast("monthKeyの形式が不正です（YYYYMM）。", "warn");
+      ev.target.value = "";
+      return;
+    }
+    if(m.blocks !== undefined && !isValidBlocksShape(m.blocks)){
+      showToast("blocksの形式が不正です。", "warn");
+      ev.target.value = "";
+      return;
+    }
+    if(!isValidFinalsShape(m.finals)){
+      showToast("finalsの形式が不正です。", "warn");
+      ev.target.value = "";
+      return;
+    }
+
+    // ここまで来たら安全に適用
+    try{
+      if(obj.settings){
+        settings = {
+          splitDefault: obj.settings.splitDefault,
+          splitByCategory: obj.settings.splitByCategory
+        };
+        saveSettings(settings);
+        renderSettings();
+      }
+
+      const mk = m.monthKey;
+      // 正規化：不足フィールドを埋める
+      if(!m.finals){
+        m.finals = {};
+        for(const k in TREND_ITEMS) m.finals[k] = 0;
+      }else{
+        for(const k in TREND_ITEMS){
+          if(!isFiniteNumber(m.finals[k])) m.finals[k] = 0;
+        }
+      }
+      if(!m.blocks) m.blocks = {};
+      for(const b of BLOCKS){
+        if(!m.blocks[b.key]) m.blocks[b.key] = {};
+        for(const r of b.rows){
+          if(!isFiniteNumber(m.blocks[b.key][r.id])){
+            m.blocks[b.key][r.id] = 0;
+          }
+        }
+      }
+      m.blocks.fixed.mortgage = FIXED_MORTGAGE;
+
+      safeStorage.set(LS_MONTH(mk), JSON.stringify(m));
+
+      // 翌月もキャリー更新
+      const nextKey = shiftMonthKey(mk, +1);
+      const next = loadMonth(nextKey);
+      applyAutoCarry(next);
+      saveMonth(next);
+
+      setMonth(mk);
+      showToast("インポートしました（" + mk + "）。", "ok");
+    }catch(e){
+      console.warn("Import apply failed:", e);
+      showToast("インポート処理に失敗しました。", "warn");
+    }finally{
+      ev.target.value = "";
+    }
   });
 
-  // ====== Trend Modal ======
-  const elTrendBackdrop = document.getElementById("trendBackdrop");
+  document.getElementById("btnClearAll").addEventListener("click", () => {
+    if(!confirm("全月データ（localStorage）を削除します。よろしいですか？")) return;
+    const keys = safeStorage.keys().filter(k => k.startsWith(LS_PREFIX));
+    keys.forEach(k => safeStorage.remove(k));
+    settings = loadSettings();
+    renderSettings();
+    setMonth(todayMonthKey());
+    showToast("削除しました。", "ok");
+  });
+
+  // ====== 推移モーダル（Chart.js） ======
+  let modalIsOpen = false;
 
   function openTrendModal(trendKey){
+    if(modalIsOpen) return; // 二重オープン防止
     const item = TREND_ITEMS[trendKey];
     if(!item) return;
 
-    const months = [], values = [];
-    for(let i=11;i>=0;i--){
-      const mk = shiftMonthKey(monthData.monthKey, -i);
+    const months = [];
+    const values = [];
+    const now = monthData.monthKey;
+
+    // 過去N ヶ月（現在含む）
+    for(let i=TREND_MONTHS-1;i>=0;i--){
+      const mk = shiftMonthKey(now, -i);
       const md = loadMonth(mk);
-      const provisional = md.blocks?.[item.block]?.[item.row] || 0;
-      const finalInput  = md.finals?.[trendKey] || 0;
-      months.push(formatMonthLabel(mk));
-      values.push(finalInput > 0 ? finalInput : provisional);
+
+      const provisional = md.blocks[item.block]?.[item.row] || 0;
+      const finalInput = md.finals?.[trendKey] || 0;
+      const effective = finalInput > 0 ? finalInput : provisional;
+
+      months.push(mk);
+      values.push(effective);
     }
 
-    document.getElementById("trendTitle").textContent = `${item.label} の推移`;
-    document.getElementById("trendMeta").textContent  = "過去12ヶ月";
-    elTrendBackdrop.classList.add("open");
+    elModalTitle.textContent = `${item.label} の推移`;
+    elModalMeta.textContent = `過去${TREND_MONTHS}ヶ月`;
+    elBackdrop.style.display = "flex";
+    elBackdrop.setAttribute("aria-hidden","false");
+    document.body.style.overflow = "hidden"; // 背景スクロールロック
+    modalIsOpen = true;
 
-    if(chartInstance){ chartInstance.destroy(); chartInstance = null; }
+    if(chartInstance){
+      chartInstance.destroy();
+      chartInstance = null;
+    }
 
-    const ctx = document.getElementById("chartCanvas").getContext("2d");
+    const ctx = chartCanvas.getContext("2d");
     chartInstance = new Chart(ctx, {
       type: "line",
       data: {
         labels: months,
         datasets: [{
           label: item.label,
-          data:  values,
-          borderColor: "rgba(193,127,74,1)",
-          backgroundColor: "rgba(193,127,74,0.08)",
+          data: values,
+          borderColor: "rgba(246,179,196,0.95)",
+          backgroundColor: "rgba(246,179,196,0.20)",
           fill: true,
           tension: 0.3,
-          pointRadius: 4,
-          pointHoverRadius: 6,
-          pointBackgroundColor: "rgba(193,127,74,1)",
+          pointRadius: 3,
+          pointHoverRadius: 5,
         }]
       },
       options: {
         responsive: true,
         plugins: {
-          legend: { display: false },
+          legend: { display: true },
           tooltip: {
             callbacks: {
               label: (ctx) => ` ${Math.round(ctx.parsed.y).toLocaleString("ja-JP")} 円`
@@ -1547,38 +1334,59 @@
           }
         },
         scales: {
-          x: { ticks:{ font:{ size:10 }, maxRotation:45 } },
-          y: { ticks:{ callback: (v) => Number(v).toLocaleString("ja-JP") + "円", font:{ size:10 } } }
+          y: { ticks: { callback: (v) => Number(v).toLocaleString("ja-JP") } }
         }
       }
     });
   }
 
-  document.getElementById("btnCloseTrend").addEventListener("click", () => elTrendBackdrop.classList.remove("open"));
-  elTrendBackdrop.addEventListener("click", (e) => { if(e.target===elTrendBackdrop) elTrendBackdrop.classList.remove("open"); });
-  document.getElementById("confirmBackdrop").addEventListener("click", (e) => {
-    if(e.target===document.getElementById("confirmBackdrop")) document.getElementById("confirmBackdrop").classList.remove("open");
-  });
-
-  function closeAllModals(){
-    elTrendBackdrop.classList.remove("open");
-    elSettingsBackdrop.classList.remove("open");
-    document.getElementById("confirmBackdrop").classList.remove("open");
+  function closeModal(){
+    if(!modalIsOpen) return;
+    elBackdrop.style.display = "none";
+    elBackdrop.setAttribute("aria-hidden","true");
+    document.body.style.overflow = ""; // 背景スクロールロック解除
+    modalIsOpen = false;
+    if(chartInstance){
+      chartInstance.destroy();
+      chartInstance = null;
+    }
   }
+  btnCloseModal.addEventListener("click", closeModal);
+  elBackdrop.addEventListener("click", (e) => { if(e.target === elBackdrop) closeModal(); });
+  document.addEventListener("keydown", (e) => { if(e.key === "Escape" && modalIsOpen) closeModal(); });
 
-  // ====== Utilities ======
+  // ====== 小物 ======
   function toNumber(v){
     const n = Number(String(v).replace(/,/g,""));
-    if(!isFinite(n)||n<0) return 0;
+    if(!isFinite(n)) return 0;
+    if(n < 0) return 0;
     return n;
   }
   function escapeHtml(s){
-    return String(s).replace(/[&<>"']/g,(m)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    return String(s).replace(/[&<>"']/g, (m) => ({
+      "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+    }[m]));
   }
 
-  // ====== Boot ======
+  // ====== 起動 ======
+  attachBlockEvents();  // イベント委譲は一度だけ
   renderSettings();
   setMonth(todayMonthKey());
+
+  // 離脱前に未保存をフラッシュ
+  window.addEventListener("beforeunload", () => {
+    saveMonthDebounced.flush();
+    updateNextMonthCarryDebounced.flush();
+    try{ saveMonth(monthData); }catch(e){}
+  });
+  // バックグラウンド遷移時（モバイル対策）
+  document.addEventListener("visibilitychange", () => {
+    if(document.visibilityState === "hidden"){
+      saveMonthDebounced.flush();
+      updateNextMonthCarryDebounced.flush();
+      try{ saveMonth(monthData); }catch(e){}
+    }
+  });
 })();
 </script>
 </body>
