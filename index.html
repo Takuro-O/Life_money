@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <style>
     :root {
@@ -762,8 +763,49 @@
             <input id="fileImport" type="file" accept="application/json" style="display:none">
           </label>
         </div>
-        <div class="io-note">
+        <div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border);">
+          <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--text3); margin-bottom:8px;">Excelから自動入力</div>
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <label class="btn btn-label" style="background:var(--accent-bg); border-color:var(--accent-border); color:var(--accent); justify-content:center;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+              </svg>
+              今月分（暫定値）を読み込む
+              <input id="fileExcelImport" type="file" accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none">
+            </label>
+            <label class="btn btn-label" style="justify-content:center;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 15 12 12 15 15"/><line x1="12" y1="12" x2="12" y2="21"/>
+              </svg>
+              前月確定分を読み込む（繰越更新）
+              <input id="fileExcelFinal" type="file" accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none">
+            </label>
+          </div>
+          <div style="margin-top:8px; font-size:11px; color:var(--text3); line-height:1.6;">
+            <strong style="color:var(--text2);">今月分</strong>：暫定値として今月に入力。精算の概算に使用。<br>
+            <strong style="color:var(--text2);">前月確定分</strong>：前月の確定値に書き込み、今月の「前月未精算」を自動更新。
+          </div>
+        </div>
+        <div class="io-note" style="margin-top:8px;">
           保存先はブラウザの localStorage です。PCやブラウザが変わると別になります。定期的にエクスポートしてバックアップしてください。
+        </div>
+      </div>
+
+      <!-- Excel Import Preview Modal -->
+      <div class="modal-backdrop" id="excelPreviewBackdrop">
+        <div class="modal" role="dialog" aria-modal="true" style="width:min(640px,100%);">
+          <div class="modal-header">
+            <div>
+              <div class="modal-title">Excel読み込み結果</div>
+              <div class="modal-meta" id="excelPreviewMeta">確認して「適用」してください</div>
+            </div>
+            <button class="modal-close" id="btnCloseExcelPreview" aria-label="閉じる">✕</button>
+          </div>
+          <div class="modal-body" style="max-height:60vh;overflow-y:auto;" id="excelPreviewBody"></div>
+          <div class="modal-footer">
+            <button class="btn" id="btnCancelExcel">キャンセル</button>
+            <button class="btn btn-primary" id="btnApplyExcel">✓ この内容を適用する</button>
+          </div>
         </div>
       </div>
     </aside>
@@ -906,8 +948,9 @@
         { id:"food",        label:"食費",       categoryKey:"default", trendKey:"food" },
         { id:"daily_goods", label:"日用品",     categoryKey:"default", trendKey:"daily_goods" },
         { id:"zennosuke",   label:"ぜんのすけ", categoryKey:"default", trendKey:"zennosuke" },
-        { id:"food_carry",  label:"前月未精算（食費・自動）",  categoryKey:"default", isCarryOver:true, autoCarryLocked:true },
-        { id:"goods_carry", label:"前月未精算（日用品・自動）", categoryKey:"default", isCarryOver:true, autoCarryLocked:true },
+        { id:"food_carry",  label:"前月未精算（食費・自動）",       categoryKey:"default", isCarryOver:true, autoCarryLocked:true },
+        { id:"goods_carry", label:"前月未精算（日用品・自動）",     categoryKey:"default", isCarryOver:true, autoCarryLocked:true },
+        { id:"zen_carry",   label:"前月未精算（ぜんのすけ・自動）", categoryKey:"default", isCarryOver:true, autoCarryLocked:true },
       ]
     },
     {
@@ -920,7 +963,6 @@
         { id:"y_goods",   label:"日用品" },
         { id:"y_zennosuke", label:"ぜんのすけ" },
         { id:"y_other",   label:"その他" },
-        { id:"y_carry",   label:"前月未精算（立替）", isCarryOver:true, autoCarryLocked:true },
       ]
     }
   ];
@@ -1080,6 +1122,8 @@
     { const p = prev.blocks.daily.food||0; const f = effectiveFinalOrProvisional(prev,"food","daily","food"); monthData.blocks.daily.food_carry = diffNonNegative(f,p); }
     // 日用品
     { const p = prev.blocks.daily.daily_goods||0; const f = effectiveFinalOrProvisional(prev,"daily_goods","daily","daily_goods"); monthData.blocks.daily.goods_carry = diffNonNegative(f,p); }
+    // ぜんのすけ
+    { const p = prev.blocks.daily.zennosuke||0; const f = effectiveFinalOrProvisional(prev,"zennosuke","daily","zennosuke"); monthData.blocks.daily.zen_carry = diffNonNegative(f,p); }
     // 固定費
     { const eP=prev.blocks.fixed.electric||0; const eF=effectiveFinalOrProvisional(prev,"electric","fixed","electric"); const dE=diffNonNegative(eF,eP);
       const gP=prev.blocks.fixed.gas||0; const gF=effectiveFinalOrProvisional(prev,"gas","fixed","gas"); const dG=diffNonNegative(gF,gP);
@@ -1738,6 +1782,263 @@
   function escapeHtml(s){
     return String(s).replace(/[&<>"']/g,(m)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   }
+
+  // ====== Excel Import ======
+  let _excelParsed = null; // { month, totals, unmapped, mode: "provisional" | "final" }
+
+  // マッピングルール：ExcelのカテゴリからHTMLアプリのフィールドへ
+  function parseExcel(arrayBuffer) {
+    try {
+      const wb = XLSX.read(arrayBuffer, { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval: "" });
+
+      const sample = rows[0] || {};
+      const keys = Object.keys(sample);
+
+      const COL_TARGET  = keys.find(k => /計算対象/.test(k)) || "計算対象";
+      const COL_MAJOR   = keys.find(k => /大項目/.test(k)) || "大項目";
+      const COL_MINOR   = keys.find(k => /中項目/.test(k)) || "中項目";
+      const COL_AMOUNT  = keys.find(k => /金額/.test(k)) || "金額（円）";
+      const COL_INST    = keys.find(k => /保有金融機関/.test(k)) || "保有金融機関";
+      const COL_DATE    = keys.find(k => /日付/.test(k)) || "日付";
+      const COL_XFER    = keys.find(k => /振替/.test(k)) || "振替";
+      const COL_CONTENT = keys.find(k => /内容/.test(k)) || "内容";
+
+      // 日付からYYYYMM取得
+      let detectedMonth = null;
+      for (const r of rows) {
+        const d = String(r[COL_DATE] || "");
+        const m = d.match(/(\d{4})[\/\-](\d{1,2})/);
+        if (m) { detectedMonth = m[1] + m[2].padStart(2,"0"); break; }
+      }
+
+      const totals = {
+        food: 0, daily_goods: 0, zennosuke: 0,
+        car: 0, hobby: 0, other_special: 0, new_home: 0,
+        y_food: 0, y_goods: 0, y_zennosuke: 0, y_other: 0,
+      };
+      const unmapped = {};
+
+      for (const r of rows) {
+        if (Number(r[COL_TARGET]) !== 1) continue;
+        if (Number(r[COL_XFER])   === 1) continue;
+
+        const amount = Number(String(r[COL_AMOUNT]).replace(/,/g,"")) || 0;
+        if (amount >= 0) continue;
+        const abs = Math.abs(amount);
+
+        const major   = String(r[COL_MAJOR]   || "").trim();
+        const minor   = String(r[COL_MINOR]   || "").trim();
+        const inst    = String(r[COL_INST]    || "").trim();
+        const content = String(r[COL_CONTENT] || "");
+        const isYuka  = inst === "なし" && content.includes("（ゆか）");
+
+        if (major === "食費") {
+          totals.food += abs;                          // 全体合計（ゆか払い含む）
+          if (isYuka) totals.y_food += abs;            // うちゆか払い分（控除用）
+        } else if (major === "日用品") {
+          if (minor === "ぜんのすけ") {
+            totals.zennosuke += abs;
+            if (isYuka) totals.y_zennosuke += abs;
+          } else if (minor === "2人の日用品") {
+            totals.daily_goods += abs;                 // 全体合計（ゆか払い含む）
+            if (isYuka) totals.y_goods += abs;         // うちゆか払い分（控除用）
+          } else {
+            unmapped[`${major}/${minor}`] = (unmapped[`${major}/${minor}`] || 0) + abs;
+          }
+        } else if (major === "自動車") {
+          if (isYuka) totals.y_other += abs; else totals.car += abs;
+        } else if (major === "趣味・娯楽" || major === "趣味娯楽") {
+          if (isYuka) totals.y_other += abs; else totals.hobby += abs;
+        } else if (major === "交際費") {
+          if (isYuka) totals.y_other += abs; else totals.other_special += abs;
+        } else if (major === "新居関係") {
+          if (isYuka) totals.y_other += abs; else totals.new_home += abs;
+        } else if (major === "教養・教育" || major === "その他") {
+          if (isYuka) totals.y_other += abs; else totals.other_special += abs;
+        } else if (major !== "未分類" && major !== "収入") {
+          unmapped[`${major}/${minor}`] = (unmapped[`${major}/${minor}`] || 0) + abs;
+        }
+      }
+
+      return { month: detectedMonth, totals, unmapped };
+    } catch(e) {
+      console.error("Excel parse error:", e);
+      return null;
+    }
+  }
+
+  function renderExcelPreview(parsed) {
+    const { month, totals, unmapped, mode } = parsed;
+    const isFinal = mode === "final";
+    const targetMonth = isFinal && month ? shiftMonthKey(month, 0) : month;
+    const label = targetMonth ? formatMonthLabel(targetMonth) : "不明";
+    const prevLabel = targetMonth ? formatMonthLabel(shiftMonthKey(targetMonth, -1)) : "不明";
+
+    const FIELD_LABELS = {
+      food: "食費（全体合計）", daily_goods: "日用品・2人（全体合計）",
+      zennosuke: "ぜんのすけ（全体合計）", car: "自動車",
+      hobby: "趣味娯楽", other_special: "その他（特別費）", new_home: "新居関係",
+      y_food: "うちゆか払い：食費", y_goods: "うちゆか払い：日用品",
+      y_zennosuke: "うちゆか払い：ぜんのすけ", y_other: "ゆか立替：その他",
+    };
+
+    // 確定値として書き込める項目（finals に対応しているもの）
+    const FINAL_KEYS = ["food","daily_goods","zennosuke","car","hobby","other_special","new_home"];
+
+    const SECTIONS = [
+      { label: "📋 費目合計（按分の対象）", keys: ["food","daily_goods","zennosuke","car","hobby","other_special","new_home"] },
+      { label: "👛 うちゆかが払った分（立替控除）", keys: ["y_food","y_goods","y_zennosuke","y_other"] },
+    ];
+
+    let html = "";
+
+    if (isFinal) {
+      html += `<div style="padding:10px 12px;background:var(--ok-bg);border:1px solid var(--ok-border);border-radius:var(--radius-sm);font-size:12px;color:var(--ok);margin-bottom:14px;">
+        <strong>前月確定モード</strong>：${label}のデータを<strong>前月（${prevLabel}）の確定値</strong>として書き込みます。<br>
+        今月（${label}）の「前月未精算」が自動更新されます。<br>
+        ※ゆか立替分は確定値の対象外のため適用されません。
+      </div>`;
+    } else {
+      html += `<div style="padding:10px 12px;background:var(--accent-bg);border:1px solid var(--accent-border);border-radius:var(--radius-sm);font-size:12px;color:var(--accent);margin-bottom:14px;">
+        <strong>今月暫定モード</strong>：${label}のデータを<strong>今月の暫定値</strong>として書き込みます。
+      </div>`;
+    }
+
+    for (const sec of SECTIONS) {
+      html += `<div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;">${sec.label}</div>`;
+      html += `<table style="width:100%;font-size:13px;border-collapse:collapse;margin-bottom:16px;">`;
+      for (const k of sec.keys) {
+        const v = totals[k] || 0;
+        const isSkipped = isFinal && !FINAL_KEYS.includes(k); // ゆか立替は確定値に不要
+        html += `<tr style="border-bottom:1px solid var(--border);${isSkipped ? 'opacity:0.35;' : ''}">
+          <td style="padding:7px 8px;color:var(--text2);">${FIELD_LABELS[k]}${isSkipped ? ' <span style="font-size:10px;">(スキップ)</span>' : ''}</td>
+          <td style="padding:7px 8px;text-align:right;font-weight:600;font-variant-numeric:tabular-nums;">${v > 0 ? yen(v) : '¥0（未検出）'}</td>
+        </tr>`;
+      }
+      html += `</table>`;
+    }
+
+    if (Object.keys(unmapped).length > 0) {
+      html += `<details style="margin-top:8px;">
+        <summary style="font-size:12px;color:var(--text3);cursor:pointer;">未マッピング項目（適用されません）</summary>
+        <table style="width:100%;font-size:12px;border-collapse:collapse;margin-top:6px;">`;
+      for (const [k, v] of Object.entries(unmapped)) {
+        html += `<tr><td style="padding:4px 8px;color:var(--text3);">${k}</td><td style="padding:4px 8px;text-align:right;color:var(--text3);">${yen(v)}</td></tr>`;
+      }
+      html += `</table></details>`;
+    }
+
+    document.getElementById("excelPreviewBody").innerHTML = html;
+    document.getElementById("excelPreviewMeta").textContent =
+      isFinal ? `前月確定：${prevLabel} → 確認して「適用」してください` : `今月暫定：${label} → 確認して「適用」してください`;
+  }
+
+  // 暫定値として今月に書き込む
+  function applyExcelProvisional(parsed) {
+    const { month, totals } = parsed;
+    const mk = month || monthKey;
+    if (mk !== monthKey) setMonth(mk);
+
+    monthData.blocks.daily.food              = totals.food          || 0;
+    monthData.blocks.daily.daily_goods       = totals.daily_goods   || 0;
+    monthData.blocks.daily.zennosuke         = totals.zennosuke     || 0;
+    monthData.blocks.special.car             = totals.car           || 0;
+    monthData.blocks.special.hobby           = totals.hobby         || 0;
+    monthData.blocks.special.other_special   = totals.other_special || 0;
+    monthData.blocks.special.new_home        = totals.new_home      || 0;
+    monthData.blocks.yukaPaid.y_food         = totals.y_food        || 0;
+    monthData.blocks.yukaPaid.y_goods        = totals.y_goods       || 0;
+    monthData.blocks.yukaPaid.y_zennosuke    = totals.y_zennosuke   || 0;
+    monthData.blocks.yukaPaid.y_other        = totals.y_other       || 0;
+
+    applyAutoCarry(monthData);
+    saveMonth(monthData);
+    refreshInputs();
+    updateAll();
+  }
+
+  // 確定値として前月に書き込み、今月の繰越を更新する
+  function applyExcelFinal(parsed) {
+    const { month, totals } = parsed;
+    const prevMk = month || shiftMonthKey(monthKey, -1);
+
+    // 前月データを読み込んで確定値（finals）を更新
+    const prevData = peekMonth(prevMk);
+
+    // TREND_ITEMS と対応するフィールドへ書き込む
+    // finals のキー: food, daily_goods, zennosuke, car, hobby, other_special, new_home
+    prevData.finals.food          = totals.food          || 0;
+    prevData.finals.daily_goods   = totals.daily_goods   || 0;
+    prevData.finals.zennosuke     = totals.zennosuke     || 0;
+    prevData.finals.car           = totals.car           || 0;
+    prevData.finals.hobby         = totals.hobby         || 0;
+    prevData.finals.other_special = totals.other_special || 0;
+    prevData.finals.new_home      = totals.new_home      || 0;
+    saveMonth(prevData);
+
+    // 今月（翌月）の繰越を再計算
+    const nextMk = shiftMonthKey(prevMk, +1);
+    if (nextMk === monthKey) {
+      applyAutoCarry(monthData);
+      saveMonth(monthData);
+      refreshInputs();
+      updateAll();
+    } else {
+      // 表示中の月と異なる場合も繰越だけ更新
+      if (safeGetItem(LS_MONTH(nextMk)) !== null) {
+        const nextData = peekMonth(nextMk);
+        applyAutoCarry(nextData);
+        saveMonth(nextData);
+      }
+    }
+  }
+
+  const elExcelBackdrop = document.getElementById("excelPreviewBackdrop");
+
+  async function handleExcelFile(file, mode) {
+    try {
+      const buf = await file.arrayBuffer();
+      const parsed = parseExcel(buf);
+      if (!parsed) { toast("Excelの読み込みに失敗しました", "warn"); return; }
+      parsed.mode = mode;
+      _excelParsed = parsed;
+      renderExcelPreview(parsed);
+      openModal(elExcelBackdrop);
+    } catch(e) {
+      toast("Excelの読み込みに失敗しました", "warn");
+    }
+  }
+
+  document.getElementById("fileExcelImport").addEventListener("change", async (ev) => {
+    const file = ev.target.files?.[0];
+    if (file) await handleExcelFile(file, "provisional");
+    ev.target.value = "";
+  });
+
+  document.getElementById("fileExcelFinal").addEventListener("change", async (ev) => {
+    const file = ev.target.files?.[0];
+    if (file) await handleExcelFile(file, "final");
+    ev.target.value = "";
+  });
+
+  document.getElementById("btnCloseExcelPreview").addEventListener("click",  () => closeModal(elExcelBackdrop));
+  document.getElementById("btnCancelExcel").addEventListener("click",         () => closeModal(elExcelBackdrop));
+  elExcelBackdrop.addEventListener("click", (e) => { if(e.target===elExcelBackdrop) closeModal(elExcelBackdrop); });
+
+  document.getElementById("btnApplyExcel").addEventListener("click", () => {
+    if (!_excelParsed) return;
+    if (_excelParsed.mode === "final") {
+      applyExcelFinal(_excelParsed);
+      toast("前月確定値を適用・繰越を更新しました ✓", "ok", 2800);
+    } else {
+      applyExcelProvisional(_excelParsed);
+      toast("今月の暫定値を適用しました ✓", "ok", 2500);
+    }
+    closeModal(elExcelBackdrop);
+    _excelParsed = null;
+  });
 
   // ====== Boot ======
   renderSettingsModal();
