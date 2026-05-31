@@ -1805,13 +1805,14 @@
       const COL_XFER    = keys.find(k => /振替/.test(k)) || "振替";
       const COL_CONTENT = keys.find(k => /内容/.test(k)) || "内容";
 
-      // 日付からYYYYMM取得
-      let detectedMonth = null;
+      // 日付からYYYYMM取得（最頻値の月を採用）
+      const monthCount = {};
       for (const r of rows) {
         const d = String(r[COL_DATE] || "");
         const m = d.match(/(\d{4})[\/\-](\d{1,2})/);
-        if (m) { detectedMonth = m[1] + m[2].padStart(2,"0"); break; }
+        if (m) { const k = m[1] + m[2].padStart(2,"0"); monthCount[k] = (monthCount[k]||0) + 1; }
       }
+      const detectedMonth = Object.entries(monthCount).sort((a,b) => b[1]-a[1])[0]?.[0] || null;
 
       const totals = {
         food: 0, daily_goods: 0, zennosuke: 0,
@@ -1820,9 +1821,15 @@
       };
       const unmapped = {};
 
+      // 振替・計算対象の判定ヘルパー（数値"1"・文字列"1"・"○"・trueに対応）
+      function isFlagOn(v) {
+        const s = String(v ?? "").trim();
+        return s === "1" || s === "○" || s === "true";
+      }
+
       for (const r of rows) {
-        if (Number(r[COL_TARGET]) !== 1) continue;
-        if (Number(r[COL_XFER])   === 1) continue;
+        if (!isFlagOn(r[COL_TARGET])) continue;
+        if (isFlagOn(r[COL_XFER]))    continue;
 
         const amount = Number(String(r[COL_AMOUNT]).replace(/,/g,"")) || 0;
         if (amount >= 0) continue;
@@ -1832,11 +1839,19 @@
         const minor   = String(r[COL_MINOR]   || "").trim();
         const inst    = String(r[COL_INST]    || "").trim();
         const content = String(r[COL_CONTENT] || "");
-        const isYuka  = inst === "なし" && content.includes("（ゆか）");
+        // 「なし」の表記ゆれ・スペース吸収、括弧は全角・半角両対応
+        const isYuka  = /^なし$/.test(inst) && /[（(]ゆか[）)]/.test(content);
+
+        // unmappedキー（中項目が空の場合は大項目のみ）
+        const unmapKey = (maj, min) => min ? `${maj}/${min}` : maj;
 
         if (major === "食費") {
-          totals.food += abs;                          // 全体合計（ゆか払い含む）
-          if (isYuka) totals.y_food += abs;            // うちゆか払い分（控除用）
+          if (minor === "2人の食費") {
+            totals.food += abs;                        // 全体合計（ゆか払い含む）
+            if (isYuka) totals.y_food += abs;          // うちゆか払い分（控除用）
+          } else {
+            unmapped[unmapKey(major,minor)] = (unmapped[unmapKey(major,minor)] || 0) + abs;
+          }
         } else if (major === "日用品") {
           if (minor === "ぜんのすけ") {
             totals.zennosuke += abs;
@@ -1845,20 +1860,24 @@
             totals.daily_goods += abs;                 // 全体合計（ゆか払い含む）
             if (isYuka) totals.y_goods += abs;         // うちゆか払い分（控除用）
           } else {
-            unmapped[`${major}/${minor}`] = (unmapped[`${major}/${minor}`] || 0) + abs;
+            unmapped[unmapKey(major,minor)] = (unmapped[unmapKey(major,minor)] || 0) + abs;
           }
         } else if (major === "自動車") {
           if (isYuka) totals.y_other += abs; else totals.car += abs;
         } else if (major === "趣味・娯楽" || major === "趣味娯楽") {
           if (isYuka) totals.y_other += abs; else totals.hobby += abs;
         } else if (major === "交際費") {
-          if (isYuka) totals.y_other += abs; else totals.other_special += abs;
+          if (minor === "2人のプレゼント費") {
+            if (isYuka) totals.y_other += abs; else totals.other_special += abs;
+          } else {
+            unmapped[unmapKey(major,minor)] = (unmapped[unmapKey(major,minor)] || 0) + abs;
+          }
         } else if (major === "新居関係") {
           if (isYuka) totals.y_other += abs; else totals.new_home += abs;
         } else if (major === "教養・教育" || major === "その他") {
           if (isYuka) totals.y_other += abs; else totals.other_special += abs;
         } else if (major !== "未分類" && major !== "収入") {
-          unmapped[`${major}/${minor}`] = (unmapped[`${major}/${minor}`] || 0) + abs;
+          unmapped[unmapKey(major,minor)] = (unmapped[unmapKey(major,minor)] || 0) + abs;
         }
       }
 
