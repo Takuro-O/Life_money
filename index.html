@@ -1863,19 +1863,24 @@
             unmapped[unmapKey(major,minor)] = (unmapped[unmapKey(major,minor)] || 0) + abs;
           }
         } else if (major === "自動車") {
-          if (isYuka) totals.y_other += abs; else totals.car += abs;
+          totals.car += abs;                           // 全体合計（ゆか払い含む）
+          if (isYuka) totals.y_other += abs;            // うちゆか払い分（控除用）
         } else if (major === "趣味・娯楽" || major === "趣味娯楽") {
-          if (isYuka) totals.y_other += abs; else totals.hobby += abs;
+          totals.hobby += abs;                          // 全体合計（ゆか払い含む）
+          if (isYuka) totals.y_other += abs;            // うちゆか払い分（控除用）
         } else if (major === "交際費") {
           if (minor === "2人のプレゼント費") {
-            if (isYuka) totals.y_other += abs; else totals.other_special += abs;
+            totals.other_special += abs;                // 全体合計（ゆか払い含む）
+            if (isYuka) totals.y_other += abs;          // うちゆか払い分（控除用）
           } else {
             unmapped[unmapKey(major,minor)] = (unmapped[unmapKey(major,minor)] || 0) + abs;
           }
         } else if (major === "新居関係") {
-          if (isYuka) totals.y_other += abs; else totals.new_home += abs;
+          totals.new_home += abs;                       // 全体合計（ゆか払い含む）
+          if (isYuka) totals.y_other += abs;            // うちゆか払い分（控除用）
         } else if (major === "教養・教育" || major === "その他") {
-          if (isYuka) totals.y_other += abs; else totals.other_special += abs;
+          totals.other_special += abs;                  // 全体合計（ゆか払い含む）
+          if (isYuka) totals.y_other += abs;            // うちゆか払い分（控除用）
         } else if (major !== "未分類" && major !== "収入") {
           unmapped[unmapKey(major,minor)] = (unmapped[unmapKey(major,minor)] || 0) + abs;
         }
