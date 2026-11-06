@@ -641,32 +641,6 @@
     .confirm-msg { font-size: 13px; color: var(--text2); line-height: 1.6; margin-top: 8px; }
     .confirm-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
 
-    /* ======= SHORTCUTS TIP ======= */
-    .shortcuts-tip {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 8px 12px;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      font-size: 11px;
-      color: var(--text3);
-    }
-    kbd {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 1px 5px;
-      background: var(--surface);
-      border: 1px solid var(--border2);
-      border-bottom-width: 2px;
-      border-radius: 4px;
-      font: inherit;
-      font-size: 10px;
-      font-weight: 700;
-      color: var(--text2);
-    }
     .reset-btn-row { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
 
     canvas { max-width: 100%; }
@@ -709,9 +683,6 @@
     </div>
 
     <div class="header-actions">
-      <div class="shortcuts-tip">
-        <span><kbd>Ctrl</kbd>+<kbd>←</kbd> / <kbd>→</kbd> で月切替</span>
-      </div>
       <button class="icon-btn" id="btnSettings" title="按分設定" aria-label="按分設定を開く">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <circle cx="12" cy="12" r="3"/>
@@ -773,24 +744,20 @@
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
               </svg>
-              今月分（暫定値）を読み込む
+              今月分を読み込む（暫定）
               <input id="fileExcelImport" type="file" accept=".csv,.xls,.xlsx,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none">
             </label>
             <label class="btn btn-label" style="justify-content:center;">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 15 12 12 15 15"/><line x1="12" y1="12" x2="12" y2="21"/>
               </svg>
-              前月確定分を読み込む（繰越更新）
+              前月分を読み込む（確定）
               <input id="fileExcelFinal" type="file" accept=".csv,.xls,.xlsx,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none">
             </label>
           </div>
-          <div style="margin-top:8px; font-size:11px; color:var(--text3); line-height:1.6;">
-            <strong style="color:var(--text2);">今月分</strong>：暫定値として今月に入力。精算の概算に使用。<br>
-            <strong style="color:var(--text2);">前月確定分</strong>：前月の確定値に書き込み、今月の「前月未精算」を自動更新。
-          </div>
         </div>
         <div class="io-note" style="margin-top:8px;">
-          保存先はブラウザの localStorage です。PCやブラウザが変わると別になります。定期的にエクスポートしてバックアップしてください。
+          データはこのブラウザにだけ保存されます。定期的にエクスポートしてください。
         </div>
       </div>
 
@@ -800,7 +767,7 @@
           <div class="modal-header">
             <div>
               <div class="modal-title">読み込み結果</div>
-              <div class="modal-meta" id="excelPreviewMeta">確認して「適用」してください</div>
+              <div class="modal-meta" id="excelPreviewMeta"></div>
             </div>
             <button class="modal-close" id="btnCloseExcelPreview" aria-label="閉じる">✕</button>
           </div>
@@ -844,20 +811,20 @@
     </div>
     <div class="modal-body" style="padding-bottom:0">
       <div class="settings-section">
-        <div class="settings-label">原則（あなた / ゆか）</div>
+        <div class="settings-label">負担割合</div>
         <div class="settings-row">
           <div class="settings-field">
-            <label>あなたの割合</label>
+            <label>あなた</label>
             <input class="settings-input" id="ratioYour" type="number" step="0.001" min="0" max="1" />
           </div>
           <div class="settings-field">
-            <label>ゆかの割合</label>
+            <label>ゆか</label>
             <input class="settings-input" id="ratioYuka" type="number" step="0.001" min="0" max="1" />
           </div>
         </div>
       </div>
       <div style="padding-top:4px; padding-bottom:16px; font-size:11px; color:var(--text3); line-height:1.6">
-        「前月未精算（自動）」は、対象行の <b>確定値（または暫定値）</b> − <b>暫定値</b> を合算して自動計算します（負は0扱い）。
+        前月未精算は、前月の確定値と暫定値の差額から自動で計算されます。
       </div>
     </div>
     <div class="modal-footer">
@@ -906,46 +873,43 @@
       key: "fixed",
       title: "毎月の固定費・ライフライン",
       num: "1",
-      hint: "按分あり（電気/ガスは確定値入力・推移グラフあり）",
       rows: [
         { id:"mortgage",     label:"住宅ローン返済",     categoryKey:"default", locked:true },
         { id:"electric",     label:"電気",              categoryKey:"default", trendKey:"electric" },
         { id:"gas",          label:"ガス",              categoryKey:"default", trendKey:"gas" },
         { id:"water",        label:"水道",              categoryKey:"default" },
-        { id:"fixed_carry",  label:"前月未精算（固定費・自動）", categoryKey:"default", isCarryOver:true, autoCarryLocked:true },
+        { id:"fixed_carry",  label:"前月未精算", categoryKey:"default", isCarryOver:true, autoCarryLocked:true },
       ]
     },
     {
       key: "special",
       title: "特別な出費",
       num: "2",
-      hint: "按分あり（自動車/趣味娯楽/その他は確定・推移あり）",
       rows: [
         { id:"car",           label:"自動車",           categoryKey:"default", trendKey:"car" },
         { id:"hobby",         label:"趣味娯楽",         categoryKey:"default", trendKey:"hobby" },
         { id:"other_special", label:"その他",           categoryKey:"default", trendKey:"other_special" },
-        { id:"special_carry", label:"前月未精算（特別費・自動）", categoryKey:"default", isCarryOver:true, autoCarryLocked:true },
+        { id:"special_carry", label:"前月未精算", categoryKey:"default", isCarryOver:true, autoCarryLocked:true },
       ]
     },
     {
       key: "daily",
       title: "食費・日用品・ぜんのすけ",
       num: "3",
-      hint: "按分あり（食費/日用品/ぜんのすけは確定値入力・推移グラフあり）",
       rows: [
         { id:"food",        label:"食費",       categoryKey:"default", trendKey:"food" },
         { id:"daily_goods", label:"日用品",     categoryKey:"default", trendKey:"daily_goods" },
         { id:"zennosuke",   label:"ぜんのすけ", categoryKey:"default", trendKey:"zennosuke" },
-        { id:"food_carry",  label:"前月未精算（食費・自動）",       categoryKey:"default", isCarryOver:true, autoCarryLocked:true },
-        { id:"goods_carry", label:"前月未精算（日用品・自動）",     categoryKey:"default", isCarryOver:true, autoCarryLocked:true },
-        { id:"zen_carry",   label:"前月未精算（ぜんのすけ・自動）", categoryKey:"default", isCarryOver:true, autoCarryLocked:true },
+        { id:"food_carry",  label:"前月未精算：食費",       categoryKey:"default", isCarryOver:true, autoCarryLocked:true },
+        { id:"goods_carry", label:"前月未精算：日用品",     categoryKey:"default", isCarryOver:true, autoCarryLocked:true },
+        { id:"zen_carry",   label:"前月未精算：ぜんのすけ", categoryKey:"default", isCarryOver:true, autoCarryLocked:true },
       ]
     },
     {
       key: "yukaPaid",
       title: "ゆかが出したお金（立替）",
       num: "4",
-      hint: "按分なし（ゆかの立替実額）",
+      hint: "按分なし",
       rows: [
         { id:"y_food",    label:"食費" },
         { id:"y_goods",   label:"日用品" },
@@ -1154,8 +1118,10 @@
     const receiveRaw = Math.max(0, diff);
     const receiveFloor100 = Math.floor(receiveRaw / 100) * 100;
     const status = diff < 0
-      ? { type:"warn", text:"⚠ ゆかへ支払いが必要" }
-      : { type:"ok",   text:"✓ 精算OK" };
+      ? { type:"warn", text:"⚠ ゆかへ支払い" }
+      : receiveFloor100 > 0
+        ? { type:"ok", text:"✓ ゆかから受け取り" }
+        : { type:"ok", text:"✓ 精算なし" };
     return { totalsByBlock, yukaFinal, yukaPaid, diff, receiveRaw, receiveFloor100, status };
   }
 
@@ -1242,7 +1208,7 @@
           <div class="card-number">${b.num}</div>
           <div>
             <div class="card-title">${escapeHtml(b.title)}</div>
-            <div class="card-hint">${escapeHtml(b.hint||"")}</div>
+            ${b.hint ? `<div class="card-hint">${escapeHtml(b.hint)}</div>` : ""}
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:4px">
@@ -1397,7 +1363,6 @@
         applyAutoCarry(monthData);
         debouncedSaveMonth(monthData);
         updateAll();
-        scheduleAutoSaveToast();
       } else if(type === "final"){
         const k = inp.getAttribute("data-trendkey");
         monthData.finals[k] = toNumber(inp.value);
@@ -1412,7 +1377,6 @@
         // 翌月が未作成の場合は今月保存のみ（未来月データを勝手に生成しない）
         debouncedSaveMonth(monthData);
         updateAll();
-        scheduleAutoSaveToast();
       }
     });
 
@@ -1431,12 +1395,6 @@
     });
   }
 
-  // debounced toast
-  let toastTimer;
-  function scheduleAutoSaveToast(){
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => toast("保存しました ✓", "ok", 1800), 600);
-  }
 
   // ====== Update UI ======
   function updateAll(){
@@ -1501,8 +1459,7 @@
       bItem("ゆかの立替分",            yen(c.yukaPaid)),
       bItem("ぜんのすけ投資控除（固定）", yen(ZENNOSUKE_INVEST_DEDUCTION)),
       bDiv(),
-      bItem("差額（未丸め）",          num(c.diff)),
-      bItemHL("受領額（100円単位）",   c.diff < 0 ? "¥0" : yen(c.receiveFloor100)),
+      bItemHL("差額（端数込み）",      num(c.diff)),
     ].join("");
   }
 
@@ -1579,7 +1536,7 @@
     saveSettings(settings);
     updateAll();
     closeModal(elSettingsBackdrop);
-    toast("按分ルールを保存しました ✓", "ok");
+    toast("保存しました", "ok");
   });
 
   elSettingsBackdrop.addEventListener("click", (e) => { if(e.target===elSettingsBackdrop) closeModal(elSettingsBackdrop); });
@@ -1642,7 +1599,7 @@
       // settings 検証
       if(obj.settings !== undefined){
         if(!isValidSettings(obj.settings)){
-          toast("インポートデータが不正です（settings）", "warn", 3500);
+          toast("ファイルの形式が正しくありません", "warn", 3500);
           return;
         }
         settings = {
@@ -1656,7 +1613,7 @@
       // monthData 検証
       if(obj.monthData !== undefined){
         if(!isValidMonthData(obj.monthData)){
-          toast("インポートデータが不正です（monthData）", "warn", 3500);
+          toast("ファイルの形式が正しくありません", "warn", 3500);
           return;
         }
         const m  = obj.monthData;
@@ -1677,7 +1634,7 @@
           saveMonth(next);
         }
         setMonth(mk);
-        toast(`${formatMonthLabel(mk)} をインポートしました ✓`, "ok");
+        toast(`${formatMonthLabel(mk)} をインポートしました`, "ok");
       }
     }catch(e){ toast("JSONの読み込みに失敗しました", "warn"); }
     finally{ ev.target.value = ""; }
@@ -1909,32 +1866,31 @@
     const nextLabel = formatMonthLabel(shiftMonthKey(targetMonth, 1));
 
     const FIELD_LABELS = {
-      food: "食費（全体合計）", daily_goods: "日用品・2人（全体合計）",
-      zennosuke: "ぜんのすけ（全体合計）", car: "自動車",
+      food: "食費", daily_goods: "日用品",
+      zennosuke: "ぜんのすけ", car: "自動車",
       hobby: "趣味娯楽", other_special: "その他（特別費）",
-      y_food: "ゆか払い分：食費", y_goods: "ゆか払い分：日用品",
-      y_zennosuke: "ゆか払い分：ぜんのすけ", y_other: "ゆか払い分：その他",
+      y_food: "食費", y_goods: "日用品",
+      y_zennosuke: "ぜんのすけ", y_other: "その他",
     };
 
     // 確定値として書き込める項目（finals に対応しているもの）
     const FINAL_KEYS = ["food","daily_goods","zennosuke","car","hobby","other_special"];
 
     const SECTIONS = [
-      { label: "📋 費目合計（按分の対象）", keys: ["food","daily_goods","zennosuke","car","hobby","other_special"] },
-      { label: "👛 ゆかが払った分（立替控除）", keys: ["y_food","y_goods","y_zennosuke","y_other"] },
+      { label: "費目合計", keys: ["food","daily_goods","zennosuke","car","hobby","other_special"] },
+      { label: "ゆか払い分（立替）", keys: ["y_food","y_goods","y_zennosuke","y_other"] },
     ];
 
     let html = "";
 
     if (isFinal) {
       html += `<div style="padding:10px 12px;background:var(--ok-bg);border:1px solid var(--ok-border);border-radius:var(--radius-sm);font-size:12px;color:var(--ok);margin-bottom:14px;">
-        <strong>前月確定モード</strong>：${label}のデータを<strong>${label}の確定値</strong>として書き込みます。<br>
-        ${nextLabel}の「前月未精算」が自動更新されます。<br>
-        ※ゆか払い分は確定値の対象外のため適用されません。
+        <strong>${label}の確定値</strong>として反映します。${nextLabel}の「前月未精算」も更新されます。<br>
+        ※ゆか払い分は確定値の対象外です。
       </div>`;
     } else {
       html += `<div style="padding:10px 12px;background:var(--accent-bg);border:1px solid var(--accent-border);border-radius:var(--radius-sm);font-size:12px;color:var(--accent);margin-bottom:14px;">
-        <strong>暫定モード</strong>：${label}のデータを<strong>${label}の暫定値</strong>として書き込みます。
+        <strong>${label}の暫定値</strong>として反映します。
       </div>`;
     }
 
@@ -1964,7 +1920,7 @@
 
     document.getElementById("excelPreviewBody").innerHTML = html;
     document.getElementById("excelPreviewMeta").textContent =
-      isFinal ? `確定値：${label} → 確認して「適用」してください` : `暫定値：${label} → 確認して「適用」してください`;
+      isFinal ? `${label}・確定値` : `${label}・暫定値`;
   }
 
   // 暫定値として今月に書き込む
@@ -2062,10 +2018,10 @@
     if (!_excelParsed) return;
     if (_excelParsed.mode === "final") {
       applyExcelFinal(_excelParsed);
-      toast("前月確定値を適用・繰越を更新しました ✓", "ok", 2800);
+      toast("前月の確定値を反映しました", "ok", 2800);
     } else {
       applyExcelProvisional(_excelParsed);
-      toast("今月の暫定値を適用しました ✓", "ok", 2500);
+      toast("暫定値を反映しました", "ok", 2500);
     }
     closeModal(elExcelBackdrop);
     _excelParsed = null;
