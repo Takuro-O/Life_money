@@ -742,7 +742,7 @@
           <span id="status" class="status-pill">—</span>
         </div>
         <div class="result-amount-wrap" id="resultAmountWrap">
-          <div class="result-sub">妻（ゆか）から受領する金額<br>（100円単位切り捨て後）</div>
+          <div class="result-sub">ゆかから受け取る額<br>（100円未満切り捨て）</div>
           <div class="result-amount" id="finalReceive">¥0</div>
         </div>
         <div class="breakdown-list" id="breakdown"></div>
@@ -838,20 +838,20 @@
     <div class="modal-header">
       <div>
         <div class="modal-title">按分ルール設定</div>
-        <div class="modal-meta">費目ごとの負担割合を設定します</div>
+        <div class="modal-meta">負担割合を設定します</div>
       </div>
       <button class="modal-close" id="btnCloseSettings" aria-label="閉じる">✕</button>
     </div>
     <div class="modal-body" style="padding-bottom:0">
       <div class="settings-section">
-        <div class="settings-label">原則（あなた / 妻）</div>
+        <div class="settings-label">原則（あなた / ゆか）</div>
         <div class="settings-row">
           <div class="settings-field">
             <label>あなたの割合</label>
             <input class="settings-input" id="ratioYour" type="number" step="0.001" min="0" max="1" />
           </div>
           <div class="settings-field">
-            <label>妻（ゆか）の割合</label>
+            <label>ゆかの割合</label>
             <input class="settings-input" id="ratioYuka" type="number" step="0.001" min="0" max="1" />
           </div>
         </div>
@@ -943,9 +943,9 @@
     },
     {
       key: "yukaPaid",
-      title: "ゆかが出したお金（妻の立替）",
+      title: "ゆかが出したお金（立替）",
       num: "4",
-      hint: "按分なし（妻の立替実額）",
+      hint: "按分なし（ゆかの立替実額）",
       rows: [
         { id:"y_food",    label:"食費" },
         { id:"y_goods",   label:"日用品" },
@@ -1154,7 +1154,7 @@
     const receiveRaw = Math.max(0, diff);
     const receiveFloor100 = Math.floor(receiveRaw / 100) * 100;
     const status = diff < 0
-      ? { type:"warn", text:"⚠ 妻へ支払いが必要" }
+      ? { type:"warn", text:"⚠ ゆかへ支払いが必要" }
       : { type:"ok",   text:"✓ 精算OK" };
     return { totalsByBlock, yukaFinal, yukaPaid, diff, receiveRaw, receiveFloor100, status };
   }
@@ -1303,7 +1303,7 @@
           { label:"金額（暫定）", cls:"num" },
           { label:"確定値（任意）", cls:"num" },
           { label:"あなた負担",   cls:"num" },
-          { label:"妻負担",       cls:"num" },
+          { label:"ゆか負担",     cls:"num" },
         ];
 
     const head = `<thead><tr>${cols.map(c=>`<th class="${c.cls}">${escapeHtml(c.label)}</th>`).join("")}</tr></thead>`;
@@ -1497,8 +1497,8 @@
     // breakdown
     const elBreakdown = document.getElementById("breakdown");
     elBreakdown.innerHTML = [
-      bItem("妻の最終負担額",          num(c.yukaFinal)),
-      bItem("妻の立替合計",            yen(c.yukaPaid)),
+      bItem("ゆかの負担額",            num(c.yukaFinal)),
+      bItem("ゆかの立替分",            yen(c.yukaPaid)),
       bItem("ぜんのすけ投資控除（固定）", yen(ZENNOSUKE_INVEST_DEDUCTION)),
       bDiv(),
       bItem("差額（未丸め）",          num(c.diff)),
@@ -1903,16 +1903,17 @@
   function renderExcelPreview(parsed) {
     const { month, totals, unmapped, mode } = parsed;
     const isFinal = mode === "final";
-    const targetMonth = isFinal && month ? shiftMonthKey(month, 0) : month;
-    const label = targetMonth ? formatMonthLabel(targetMonth) : "不明";
-    const prevLabel = targetMonth ? formatMonthLabel(shiftMonthKey(targetMonth, -1)) : "不明";
+    // 反映先の月（apply側と同じ規則：検出できなければ 暫定=表示中の月 / 確定=その前月）
+    const targetMonth = month || (isFinal ? shiftMonthKey(monthKey, -1) : monthKey);
+    const label = formatMonthLabel(targetMonth);
+    const nextLabel = formatMonthLabel(shiftMonthKey(targetMonth, 1));
 
     const FIELD_LABELS = {
       food: "食費（全体合計）", daily_goods: "日用品・2人（全体合計）",
       zennosuke: "ぜんのすけ（全体合計）", car: "自動車",
       hobby: "趣味娯楽", other_special: "その他（特別費）",
-      y_food: "うちゆか払い：食費", y_goods: "うちゆか払い：日用品",
-      y_zennosuke: "うちゆか払い：ぜんのすけ", y_other: "ゆか立替：その他",
+      y_food: "ゆか払い分：食費", y_goods: "ゆか払い分：日用品",
+      y_zennosuke: "ゆか払い分：ぜんのすけ", y_other: "ゆか払い分：その他",
     };
 
     // 確定値として書き込める項目（finals に対応しているもの）
@@ -1920,20 +1921,20 @@
 
     const SECTIONS = [
       { label: "📋 費目合計（按分の対象）", keys: ["food","daily_goods","zennosuke","car","hobby","other_special"] },
-      { label: "👛 うちゆかが払った分（立替控除）", keys: ["y_food","y_goods","y_zennosuke","y_other"] },
+      { label: "👛 ゆかが払った分（立替控除）", keys: ["y_food","y_goods","y_zennosuke","y_other"] },
     ];
 
     let html = "";
 
     if (isFinal) {
       html += `<div style="padding:10px 12px;background:var(--ok-bg);border:1px solid var(--ok-border);border-radius:var(--radius-sm);font-size:12px;color:var(--ok);margin-bottom:14px;">
-        <strong>前月確定モード</strong>：${label}のデータを<strong>前月（${prevLabel}）の確定値</strong>として書き込みます。<br>
-        今月（${label}）の「前月未精算」が自動更新されます。<br>
-        ※ゆか立替分は確定値の対象外のため適用されません。
+        <strong>前月確定モード</strong>：${label}のデータを<strong>${label}の確定値</strong>として書き込みます。<br>
+        ${nextLabel}の「前月未精算」が自動更新されます。<br>
+        ※ゆか払い分は確定値の対象外のため適用されません。
       </div>`;
     } else {
       html += `<div style="padding:10px 12px;background:var(--accent-bg);border:1px solid var(--accent-border);border-radius:var(--radius-sm);font-size:12px;color:var(--accent);margin-bottom:14px;">
-        <strong>今月暫定モード</strong>：${label}のデータを<strong>今月の暫定値</strong>として書き込みます。
+        <strong>暫定モード</strong>：${label}のデータを<strong>${label}の暫定値</strong>として書き込みます。
       </div>`;
     }
 
@@ -1963,7 +1964,7 @@
 
     document.getElementById("excelPreviewBody").innerHTML = html;
     document.getElementById("excelPreviewMeta").textContent =
-      isFinal ? `前月確定：${prevLabel} → 確認して「適用」してください` : `今月暫定：${label} → 確認して「適用」してください`;
+      isFinal ? `確定値：${label} → 確認して「適用」してください` : `暫定値：${label} → 確認して「適用」してください`;
   }
 
   // 暫定値として今月に書き込む
