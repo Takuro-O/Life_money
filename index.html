@@ -1821,8 +1821,8 @@
             unmapped[unmapKey(major,minor)] = (unmapped[unmapKey(major,minor)] || 0) + abs;
           }
         } else if (major === "趣味・娯楽" || major === "趣味娯楽") {
-          // 中黒「・」とビュレット「•」の表記ゆれを両方許容
-          if (/^2人の趣味[・•]娯楽$/.test(minor)) {
+          // 中黒「・」「•」の有無どちらも許容（実データは中項目が「2人の趣味娯楽」）
+          if (/^2人の趣味[・•]?娯楽$/.test(minor)) {
             totals.hobby += abs;                        // 全体合計（ゆか払い含む）
             if (isYuka) totals.y_other += abs;          // うちゆか払い分（控除用）
           } else {
