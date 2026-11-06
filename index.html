@@ -864,7 +864,7 @@
     zennosuke:    { label:"ぜんのすけ",   block:"daily",   row:"zennosuke" },
     car:          { label:"自動車",       block:"special", row:"car" },
     hobby:        { label:"趣味娯楽",     block:"special", row:"hobby" },
-    other_special:{ label:"その他（特別費）", block:"special", row:"other_special" },
+    other_special:{ label:"その他（プレゼント・教育など）", block:"special", row:"other_special" },
   };
 
   // ====== ブロック定義 ======
@@ -888,7 +888,7 @@
       rows: [
         { id:"car",           label:"自動車",           categoryKey:"default", trendKey:"car" },
         { id:"hobby",         label:"趣味娯楽",         categoryKey:"default", trendKey:"hobby" },
-        { id:"other_special", label:"その他",           categoryKey:"default", trendKey:"other_special" },
+        { id:"other_special", label:"その他（プレゼント・教育など）", categoryKey:"default", trendKey:"other_special" },
         { id:"special_carry", label:"前月未精算", categoryKey:"default", isCarryOver:true, autoCarryLocked:true },
       ]
     },
@@ -914,7 +914,7 @@
         { id:"y_food",    label:"食費" },
         { id:"y_goods",   label:"日用品" },
         { id:"y_zennosuke", label:"ぜんのすけ" },
-        { id:"y_other",   label:"その他" },
+        { id:"y_other",   label:"特別費（自動車・趣味娯楽など）" },
         { id:"y_carry",   label:"前月分の立替（確定−暫定）", isCarryOver:true, autoCarryLocked:true },
       ]
     }
@@ -1810,57 +1810,32 @@
         // unmappedキー（中項目が空の場合は大項目のみ）
         const unmapKey = (maj, min) => min ? `${maj}/${min}` : maj;
 
-        if (major === "食費") {
-          if (minor === "2人の食費") {
-            totals.food += abs;                        // 全体合計（ゆか払い含む）
-            if (isYuka) totals.y_food += abs;          // うちゆか払い分（控除用）
-          } else {
+        // 按分対象の判定：中項目に「2人」を含む（2人の○○／○○（2人））か、「ぜんのすけ」を含む
+        // （「12人」など数字に続く「2人」は除外）
+        const isZen = minor.includes("ぜんのすけ");
+        const isShared = /(^|[^0-9０-９])2人/.test(minor) || isZen;
+        if (!isShared) {
+          // 対象外。未分類・収入以外は、読み飛ばしたことが分かるよう未マッピングに載せる
+          if (major !== "未分類" && major !== "収入") {
             unmapped[unmapKey(major,minor)] = (unmapped[unmapKey(major,minor)] || 0) + abs;
           }
+          continue;
+        }
+
+        // 振り分け先：ぜんのすけ → 食費 → 日用品 → 自動車 → 趣味娯楽 → それ以外は「その他（特別費）」
+        // totals.* は全体合計（ゆか払い含む）、y_* はそのうちゆか払い分（控除用）
+        if (isZen) {
+          totals.zennosuke += abs;     if (isYuka) totals.y_zennosuke += abs;
+        } else if (major === "食費") {
+          totals.food += abs;          if (isYuka) totals.y_food += abs;
         } else if (major === "日用品") {
-          if (minor === "ぜんのすけ") {
-            totals.zennosuke += abs;
-            if (isYuka) totals.y_zennosuke += abs;
-          } else if (minor === "2人の日用品") {
-            totals.daily_goods += abs;                 // 全体合計（ゆか払い含む）
-            if (isYuka) totals.y_goods += abs;         // うちゆか払い分（控除用）
-          } else {
-            unmapped[unmapKey(major,minor)] = (unmapped[unmapKey(major,minor)] || 0) + abs;
-          }
+          totals.daily_goods += abs;   if (isYuka) totals.y_goods += abs;
         } else if (major === "自動車") {
-          if (minor === "自動車関係（2人）") {
-            totals.car += abs;                         // 全体合計（ゆか払い含む）
-            if (isYuka) totals.y_other += abs;          // うちゆか払い分（控除用）
-          } else {
-            unmapped[unmapKey(major,minor)] = (unmapped[unmapKey(major,minor)] || 0) + abs;
-          }
+          totals.car += abs;           if (isYuka) totals.y_other += abs;
         } else if (major === "趣味・娯楽" || major === "趣味娯楽") {
-          // 中黒「・」「•」の有無どちらも許容（実データは中項目が「2人の趣味娯楽」）
-          if (/^2人の趣味[・•]?娯楽$/.test(minor)) {
-            totals.hobby += abs;                        // 全体合計（ゆか払い含む）
-            if (isYuka) totals.y_other += abs;          // うちゆか払い分（控除用）
-          } else {
-            unmapped[unmapKey(major,minor)] = (unmapped[unmapKey(major,minor)] || 0) + abs;
-          }
-        } else if (major === "交際費") {
-          if (minor === "2人のプレゼント費") {
-            totals.other_special += abs;                // 全体合計（ゆか払い含む）
-            if (isYuka) totals.y_other += abs;          // うちゆか払い分（控除用）
-          } else {
-            unmapped[unmapKey(major,minor)] = (unmapped[unmapKey(major,minor)] || 0) + abs;
-          }
-        } else if (major === "教養・教育") {
-          if (/2人/.test(minor)) {
-            totals.other_special += abs;                // 全体合計（ゆか払い含む）
-            if (isYuka) totals.y_other += abs;          // うちゆか払い分（控除用）
-          } else {
-            unmapped[unmapKey(major,minor)] = (unmapped[unmapKey(major,minor)] || 0) + abs;
-          }
-        } else if (major === "その他") {
-          totals.other_special += abs;                  // 全体合計（ゆか払い含む）
-          if (isYuka) totals.y_other += abs;            // うちゆか払い分（控除用）
-        } else if (major !== "未分類" && major !== "収入") {
-          unmapped[unmapKey(major,minor)] = (unmapped[unmapKey(major,minor)] || 0) + abs;
+          totals.hobby += abs;         if (isYuka) totals.y_other += abs;
+        } else {
+          totals.other_special += abs; if (isYuka) totals.y_other += abs;
         }
       }
 
@@ -1882,9 +1857,9 @@
     const FIELD_LABELS = {
       food: "食費", daily_goods: "日用品",
       zennosuke: "ぜんのすけ", car: "自動車",
-      hobby: "趣味娯楽", other_special: "その他（特別費）",
+      hobby: "趣味娯楽", other_special: "その他（プレゼント・教育など）",
       y_food: "食費", y_goods: "日用品",
-      y_zennosuke: "ぜんのすけ", y_other: "その他",
+      y_zennosuke: "ぜんのすけ", y_other: "特別費",
     };
 
     // 確定値として書き込める項目（finals に対応しているもの）
