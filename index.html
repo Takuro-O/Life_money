@@ -713,7 +713,7 @@
           <span id="status" class="status-pill">—</span>
         </div>
         <div class="result-amount-wrap" id="resultAmountWrap">
-          <div class="result-sub">ゆかから受け取る額<br>（100円未満切り捨て）</div>
+          <div class="result-sub" id="resultSub">ゆかから受け取る額<br>（100円未満切り捨て）</div>
           <div class="result-amount" id="finalReceive">¥0</div>
         </div>
         <div class="breakdown-list" id="breakdown"></div>
@@ -824,7 +824,7 @@
         </div>
       </div>
       <div style="padding-top:4px; padding-bottom:16px; font-size:11px; color:var(--text3); line-height:1.6">
-        前月未精算は、前月の確定値と暫定値の差額から自動で計算されます。
+        前月未精算は、前月の確定値と暫定値の差額（増減どちらも）から自動で計算されます。
       </div>
     </div>
     <div class="modal-footer">
@@ -915,6 +915,7 @@
         { id:"y_goods",   label:"日用品" },
         { id:"y_zennosuke", label:"ぜんのすけ" },
         { id:"y_other",   label:"その他" },
+        { id:"y_carry",   label:"前月分の立替（確定−暫定）", isCarryOver:true, autoCarryLocked:true },
       ]
     }
   ];
@@ -1016,6 +1017,8 @@
         for(const k in TREND_ITEMS){
           if(typeof obj.finals[k] === "number" && isFinite(obj.finals[k])) filled.finals[k] = obj.finals[k];
         }
+        // ゆか立替の確定値：未入力なら項目なし（0円確定と区別する）
+        if(typeof obj.finals.yuka_paid === "number" && isFinite(obj.finals.yuka_paid)) filled.finals.yuka_paid = obj.finals.yuka_paid;
       }
       filled.blocks.fixed.mortgage = FIXED_MORTGAGE;
       return filled;
@@ -1067,27 +1070,34 @@
     const finalInput  = (md.finals?.[trendKey] || 0);
     return finalInput > 0 ? finalInput : provisional;
   }
-  function diffNonNegative(f, p){ const d = f - p; return d < 0 ? 0 : d; }
+  // 確定−暫定。マイナス（取りすぎ）もそのまま繰り越して精算に反映する
+  function carryDiff(f, p){ return f - p; }
 
   function applyAutoCarry(monthData){
     const prevKey = shiftMonthKey(monthData.monthKey, -1);
     const prev    = peekMonth(prevKey); // 読み取りのみ：前月データを勝手に作成しない
 
     // 食費
-    { const p = prev.blocks.daily.food||0; const f = effectiveFinalOrProvisional(prev,"food","daily","food"); monthData.blocks.daily.food_carry = diffNonNegative(f,p); }
+    { const p = prev.blocks.daily.food||0; const f = effectiveFinalOrProvisional(prev,"food","daily","food"); monthData.blocks.daily.food_carry = carryDiff(f,p); }
     // 日用品
-    { const p = prev.blocks.daily.daily_goods||0; const f = effectiveFinalOrProvisional(prev,"daily_goods","daily","daily_goods"); monthData.blocks.daily.goods_carry = diffNonNegative(f,p); }
+    { const p = prev.blocks.daily.daily_goods||0; const f = effectiveFinalOrProvisional(prev,"daily_goods","daily","daily_goods"); monthData.blocks.daily.goods_carry = carryDiff(f,p); }
     // ぜんのすけ
-    { const p = prev.blocks.daily.zennosuke||0; const f = effectiveFinalOrProvisional(prev,"zennosuke","daily","zennosuke"); monthData.blocks.daily.zen_carry = diffNonNegative(f,p); }
+    { const p = prev.blocks.daily.zennosuke||0; const f = effectiveFinalOrProvisional(prev,"zennosuke","daily","zennosuke"); monthData.blocks.daily.zen_carry = carryDiff(f,p); }
     // 固定費
-    { const eP=prev.blocks.fixed.electric||0; const eF=effectiveFinalOrProvisional(prev,"electric","fixed","electric"); const dE=diffNonNegative(eF,eP);
-      const gP=prev.blocks.fixed.gas||0; const gF=effectiveFinalOrProvisional(prev,"gas","fixed","gas"); const dG=diffNonNegative(gF,gP);
+    { const eP=prev.blocks.fixed.electric||0; const eF=effectiveFinalOrProvisional(prev,"electric","fixed","electric"); const dE=carryDiff(eF,eP);
+      const gP=prev.blocks.fixed.gas||0; const gF=effectiveFinalOrProvisional(prev,"gas","fixed","gas"); const dG=carryDiff(gF,gP);
       monthData.blocks.fixed.fixed_carry = dE+dG; }
     // 特別費
-    { const carP=prev.blocks.special.car||0; const carF=effectiveFinalOrProvisional(prev,"car","special","car"); const dCar=diffNonNegative(carF,carP);
-      const hP=prev.blocks.special.hobby||0; const hF=effectiveFinalOrProvisional(prev,"hobby","special","hobby"); const dH=diffNonNegative(hF,hP);
-      const oP=prev.blocks.special.other_special||0; const oF=effectiveFinalOrProvisional(prev,"other_special","special","other_special"); const dO=diffNonNegative(oF,oP);
+    { const carP=prev.blocks.special.car||0; const carF=effectiveFinalOrProvisional(prev,"car","special","car"); const dCar=carryDiff(carF,carP);
+      const hP=prev.blocks.special.hobby||0; const hF=effectiveFinalOrProvisional(prev,"hobby","special","hobby"); const dH=carryDiff(hF,hP);
+      const oP=prev.blocks.special.other_special||0; const oF=effectiveFinalOrProvisional(prev,"other_special","special","other_special"); const dO=carryDiff(oF,oP);
       monthData.blocks.special.special_carry = dCar+dH+dO; }
+
+    // ゆか立替：前月確定を読み込んでいれば（確定−暫定）を今月の立替に加える
+    { let p = 0;
+      for(const id of ["y_food","y_goods","y_zennosuke","y_other"]) p += (prev.blocks.yukaPaid?.[id] || 0);
+      const f = prev.finals?.yuka_paid;
+      monthData.blocks.yukaPaid.y_carry = (typeof f === "number") ? carryDiff(f, p) : 0; }
 
     monthData.blocks.fixed.mortgage = FIXED_MORTGAGE;
   }
@@ -1117,12 +1127,13 @@
     const diff       = yukaFinal - yukaPaid - ZENNOSUKE_INVEST_DEDUCTION;
     const receiveRaw = Math.max(0, diff);
     const receiveFloor100 = Math.floor(receiveRaw / 100) * 100;
+    const payCeil100 = diff < 0 ? Math.ceil(-diff / 100) * 100 : 0; // ゆかへ支払う額（ゆか有利に切り上げ）
     const status = diff < 0
       ? { type:"warn", text:"⚠ ゆかへ支払い" }
       : receiveFloor100 > 0
         ? { type:"ok", text:"✓ ゆかから受け取り" }
         : { type:"ok", text:"✓ 精算なし" };
-    return { totalsByBlock, yukaFinal, yukaPaid, diff, receiveRaw, receiveFloor100, status };
+    return { totalsByBlock, yukaFinal, yukaPaid, diff, receiveRaw, receiveFloor100, payCeil100, status };
   }
 
   // ====== Toast ======
@@ -1446,7 +1457,10 @@
     const elAmount   = document.getElementById("finalReceive");
     const elStatus   = document.getElementById("status");
 
-    elAmount.textContent = c.diff < 0 ? "¥0" : yen(c.receiveFloor100);
+    document.getElementById("resultSub").innerHTML = c.diff < 0
+      ? "ゆかへ支払う額<br>（100円未満切り上げ）"
+      : "ゆかから受け取る額<br>（100円未満切り捨て）";
+    elAmount.textContent = c.diff < 0 ? yen(c.payCeil100) : yen(c.receiveFloor100);
     elAmount.className = "result-amount " + (c.diff < 0 ? "negative" : c.receiveFloor100 > 0 ? "positive" : "");
     amountWrap.className = "result-amount-wrap " + (c.diff < 0 ? "negative" : c.receiveFloor100 > 0 ? "positive" : "");
     elStatus.className = "status-pill " + c.status.type;
@@ -1874,7 +1888,7 @@
     };
 
     // 確定値として書き込める項目（finals に対応しているもの）
-    const FINAL_KEYS = ["food","daily_goods","zennosuke","car","hobby","other_special"];
+    const FINAL_KEYS = ["food","daily_goods","zennosuke","car","hobby","other_special","y_food","y_goods","y_zennosuke","y_other"];
 
     const SECTIONS = [
       { label: "費目合計", keys: ["food","daily_goods","zennosuke","car","hobby","other_special"] },
@@ -1886,7 +1900,7 @@
     if (isFinal) {
       html += `<div style="padding:10px 12px;background:var(--ok-bg);border:1px solid var(--ok-border);border-radius:var(--radius-sm);font-size:12px;color:var(--ok);margin-bottom:14px;">
         <strong>${label}の確定値</strong>として反映します。${nextLabel}の「前月未精算」も更新されます。<br>
-        ※ゆか払い分は確定値の対象外です。
+        ※ゆか払い分も確定値として保存し、暫定との差額を今月の立替に加えます。
       </div>`;
     } else {
       html += `<div style="padding:10px 12px;background:var(--accent-bg);border:1px solid var(--accent-border);border-radius:var(--radius-sm);font-size:12px;color:var(--accent);margin-bottom:14px;">
@@ -1962,6 +1976,8 @@
     prevData.finals.car           = totals.car           || 0;
     prevData.finals.hobby         = totals.hobby         || 0;
     prevData.finals.other_special = totals.other_special || 0;
+    // ゆか払いの確定合計（暫定との差額が翌月の立替に反映される）
+    prevData.finals.yuka_paid     = (totals.y_food||0) + (totals.y_goods||0) + (totals.y_zennosuke||0) + (totals.y_other||0);
     saveMonth(prevData);
 
     // 今月（翌月）の繰越を再計算
